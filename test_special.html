@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>특수 타일 테스트</title>
+<link rel="stylesheet" href="css/specialTiles.css">
+<script src="js/specialTiles.js"></script>
+<script src="js/specialTileEffects.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    gap: 16px;
+  }
+  h1 { font-size: 1.3rem; color: #c678f0; letter-spacing: 0.1em; }
+
+  /* ── 버튼 그룹 ── */
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    background: #2d2d4e;
+    color: #eee;
+    border: 1px solid #555;
+    transition: background 0.15s;
+  }
+  button:hover { background: #3d3d6e; }
+  #btn-drill     { border-color: orange; color: orange; }
+  #btn-blackhole { border-color: #bf7fff; color: #bf7fff; }
+  #btn-chain     { border-color: cyan;   color: cyan; }
+  #btn-timebomb  { border-color: #ff6666; color: #ff6666; }
+  #btn-magnet    { border-color: lime;   color: lime; }
+  #btn-turn      { border-color: gold; color: gold; display: none; }
+  #btn-reset     { border-color: #aaa; color: #aaa; }
+
+  /* ── 보드 ── */
+  #board-wrap {
+    position: relative;
+    background: #111;
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(8, 52px);
+    gap: 3px;
+  }
+  .tile {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: rgba(255,255,255,0.8);
+    cursor: default;
+    transition: background-color 0.2s;
+    position: relative;
+  }
+  /* 타입별 배경색 */
+  .type-0 { background-color: #c0392b; }
+  .type-1 { background-color: #d35400; }
+  .type-2 { background-color: #d4ac0d; color: #222; }
+  .type-3 { background-color: #1e8449; }
+  .type-4 { background-color: #1a5276; }
+  .type-special { background-color: #4a235a; }
+
+  /* 하이라이트 */
+  .tile.hit { background-color: rgba(255,0,0,0.5) !important; }
+
+  /* 중앙 셀 표시 */
+  .tile.origin { outline: 3px solid white; outline-offset: -3px; }
+
+  /* ── 로그 패널 ── */
+  #log-wrap {
+    width: 100%;
+    max-width: 460px;
+    background: #0d0d1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  #log-title { font-size: 0.78rem; color: #888; margin-bottom: 6px; }
+  #log { font-size: 0.78rem; line-height: 1.7; color: #ccc; min-height: 40px; }
+  #log .log-line { border-bottom: 1px solid #1e1e2e; padding: 1px 0; }
+  #log .log-line:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+
+<h1>🔬 특수 타일 효과 테스트</h1>
+
+<div class="btn-row">
+  <button id="btn-drill">⚙️ 드릴 발동</button>
+  <button id="btn-blackhole">🌀 블랙홀 발동</button>
+  <button id="btn-chain">⚡ 체인 발동</button>
+  <button id="btn-timebomb">💣 타임밤 등록</button>
+  <button id="btn-magnet">🧲 자석 발동</button>
+  <button id="btn-turn">▶ 턴 넘기기</button>
+  <button id="btn-reset">🔄 보드 초기화</button>
+</div>
+
+<div id="board-wrap">
+  <div id="board"></div>
+</div>
+
+<div id="log-wrap">
+  <div id="log-title">📋 실행 로그 (최대 10줄)</div>
+  <div id="log"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────
+// 로컬 상수 및 헬퍼
+// ──────────────────────────────────────────────────────
+const GRID = 8;
+let board = [];
+
+const TYPE_COLORS = ['type-0','type-1','type-2','type-3','type-4'];
+const TYPE_LABELS = ['0','1','2','3','4'];
+
+/** index.html의 getTile과 동일 */
+function getTile(r, c) {
+  return document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+}
+
+// ──────────────────────────────────────────────────────
+// 보드 생성 / 렌더링
+// ──────────────────────────────────────────────────────
+function createBoard() {
+  board = Array.from({ length: GRID }, () =>
+    Array.from({ length: GRID }, () => Math.floor(Math.random() * 5))
+  );
+}
+
+function renderBoard() {
+  const el = document.getElementById('board');
+  el.innerHTML = '';
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.r = r;
+      tile.dataset.c = c;
+      refreshTileStyle(tile, r, c);
+      if (r === 3 && c === 3) tile.classList.add('origin');
+      el.appendChild(tile);
+    }
+  }
+}
+
+function refreshTileStyle(tile, r, c) {
+  const val = board[r][c];
+  tile.className = 'tile';
+  if (r === 3 && c === 3) tile.classList.add('origin');
+  if (val >= 10) {
+    tile.classList.add('type-special', getSpecialTileClass(val));
+    tile.textContent = val;
+    if (val === SPECIAL_TYPES.TIMEBOMB && timebombCounters[`${r},${c}`] !== undefined) {
+      tile.dataset.countdown = timebombCounters[`${r},${c}`];
+      tile.classList.add('tile-timebomb', `timebomb-${timebombCounters[`${r},${c}`]}`);
+    }
+  } else {
+    tile.classList.add(TYPE_COLORS[val] || 'type-0');
+    tile.textContent = val;
+  }
+}
+
+// ──────────────────────────────────────────────────────
+// 하이라이트 + CSS 발동 클래스 적용 (500ms 후 복원)
+// ──────────────────────────────────────────────────────
+function highlightCells(cells, animClass, label) {
+  const coords = cells.map(({ r, c }) => `(${r},${c})`).join('');
+  addLog(`[${label}] origin(3,3) → 영향 셀 ${cells.length}개: ${coords}`);
+
+  cells.forEach(({ r, c }) => {
+    const tile = getTile(r, c);
+    if (!tile) return;
+    tile.classList.add('hit');
+    if (animClass) tile.classList.add(animClass);
+  });
+
+  setTimeout(() => {
+    cells.forEach(({ r, c }) => {
+      const tile = getTile(r, c);
+      if (!tile) return;
+      tile.classList.remove('hit');
+      if (animClass) tile.classList.remove(animClass);
+      refreshTileStyle(tile, r, c);
+    });
+  }, 500);
+}
+
+// ──────────────────────────────────────────────────────
+// 로그
+// ──────────────────────────────────────────────────────
+function addLog(msg) {
+  const logEl = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.textContent = msg;
+  logEl.appendChild(line);
+  while (logEl.children.length > 10) logEl.removeChild(logEl.firstChild);
+}
+
+// ──────────────────────────────────────────────────────
+// 버튼 핸들러
+// ──────────────────────────────────────────────────────
+document.getElementById('btn-drill').addEventListener('click', () => {
+  const cells = getDrillCells(board, 3, 3, GRID, 'row');
+  highlightCells(cells, 'drill-firing', '드릴');
+});
+
+document.getElementById('btn-blackhole').addEventListener('click', () => {
+  const cells = getBlackholeCells(board, 3, 3, GRID);
+  highlightCells(cells, 'blackhole-pull', '블랙홀');
+});
+
+document.getElementById('btn-chain').addEventListener('click', () => {
+  const cells = getChainCells(board, 3, 3, GRID);
+  highlightCells(cells, 'chain-zap', '체인');
+});
+
+document.getElementById('btn-timebomb').addEventListener('click', () => {
+  // board[3][3]을 타임밤 특수 타일로 세팅
+  board[3][3] = SPECIAL_TYPES.TIMEBOMB;
+  setTimebomb(3, 3);
+  const tile = getTile(3, 3);
+  if (tile) refreshTileStyle(tile, 3, 3);
+  document.getElementById('btn-turn').style.display = 'inline-block';
+  addLog('[타임밤] (3,3)에 타임밤 등록 — 카운트: 3턴. [턴 넘기기] 버튼 활성화');
+});
+
+document.getElementById('btn-turn').addEventListener('click', () => {
+  const bombed = tickTimebombs();
+  if (bombed.length > 0) {
+    const cells = getTimebombCells(board, bombed[0].r, bombed[0].c, GRID);
+    board[3][3] = Math.floor(Math.random() * 5); // 폭발 후 일반 타일로 복원
+    highlightCells(cells, 'timebomb-explode', '타임밤 폭발');
+    document.getElementById('btn-turn').style.display = 'none';
+    addLog(`[타임밤] 폭발! 영향 셀 ${cells.length}개`);
+  } else {
+    // 남은 타임밤 카운트 갱신
+    let remaining = false;
+    for (const [key, turns] of Object.entries(timebombCounters)) {
+      const [tr, tc] = key.split(',').map(Number);
+      const el = getTile(tr, tc);
+      if (!el) continue;
+      remaining = true;
+      el.dataset.countdown = turns;
+      el.classList.remove('timebomb-3','timebomb-2','timebomb-1');
+      el.classList.add(`timebomb-${turns}`);
+    }
+    if (!remaining) document.getElementById('btn-turn').style.display = 'none';
+    addLog(`[턴 경과] 타임밤 카운트 갱신 — 남은 카운터: ${JSON.stringify(timebombCounters)}`);
+  }
+});
+
+document.getElementById('btn-magnet').addEventListener('click', () => {
+  const cells = getMagnetCells(board, 3, 3, GRID);
+  highlightCells(cells, 'magnet-pull', '자석');
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  // 타임밤 카운터 초기화
+  for (const key of Object.keys(timebombCounters)) delete timebombCounters[key];
+  document.getElementById('btn-turn').style.display = 'none';
+  document.getElementById('log').innerHTML = '';
+  createBoard();
+  renderBoard();
+  addLog('[초기화] 보드 재생성 완료');
+});
+
+// ──────────────────────────────────────────────────────
+// 초기화
+// ──────────────────────────────────────────────────────
+createBoard();
+renderBoard();
+addLog('[준비] 보드 생성 완료. 버튼을 눌러 효과를 테스트하세요.');
+</script>
+</body>
+</html>

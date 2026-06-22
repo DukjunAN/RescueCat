@@ -1,0 +1,20 @@
+{
+  "name": "고양이 탈출 대작전",
+  "short_name": "냥탈출",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0a2e",
+  "theme_color": "#c678f0",
+  "icons": [
+    {
+      "src": "assets/image/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/image/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
