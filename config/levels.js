@@ -8,7 +8,7 @@ window.LEVEL_CONFIG = {
   animalSeed: 98765,
 
   defaults: {
-    baseTime: 60,
+    baseTime: 30,
     barriers: 8,
     types: 5,
     timePerMatch: 2

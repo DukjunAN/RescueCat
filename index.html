@@ -348,6 +348,39 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   transition:opacity .15s;}
 .settings-close-btn:hover{opacity:.85;}
 
+/* ── Tutorial popup ── */
+.tutorial-box{
+  background:var(--panel);border:2px solid var(--accent);border-radius:22px;
+  padding:20px 18px 18px;width:90%;max-width:320px;text-align:center;position:relative;}
+.tutorial-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.tutorial-progress{color:#8b6aaa;font-size:.8rem;font-weight:700;letter-spacing:.5px;}
+.tutorial-close-btn{background:transparent;border:none;color:#8b6aaa;font-size:1.1rem;
+  cursor:pointer;padding:2px 8px;border-radius:8px;transition:color .15s;}
+.tutorial-close-btn:hover{color:#fff;}
+.tutorial-tile-mock{
+  width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+  font-size:2.2rem;border-radius:12px;margin:0 auto 12px;line-height:1;}
+.tutorial-tile-mock.tile-drill{box-shadow:0 0 14px 4px orange;border:2px solid orange;background:#1a0a2e;}
+.tutorial-tile-mock.tile-blackhole{box-shadow:0 0 14px 4px purple;border:2px solid purple;background:#1a0a2e;}
+.tutorial-tile-mock.tile-chain{box-shadow:0 0 14px 4px cyan;border:2px solid cyan;background:#1a0a2e;}
+.tutorial-tile-mock.tile-timebomb{box-shadow:0 0 14px 4px red;border:2px solid red;background:#1a0a2e;}
+.tutorial-tile-mock.tile-magnet{box-shadow:0 0 14px 4px lime;border:2px solid lime;background:#1a0a2e;}
+.tutorial-intro-icon{font-size:3rem;margin-bottom:12px;}
+.tutorial-drill-row{display:flex;gap:12px;justify-content:center;margin-bottom:12px;}
+.tutorial-drill-img{
+  width:60px;height:60px;border-radius:12px;background:#1a0a2e;
+  box-shadow:0 0 14px 4px orange;border:2px solid orange;padding:4px;}
+.tutorial-slide-name{font-size:1.2rem;font-weight:900;color:#fff;margin-bottom:6px;}
+.tutorial-slide-desc{color:#a07cc5;font-size:.88rem;line-height:1.55;margin-bottom:20px;}
+.tutorial-nav{display:flex;gap:10px;justify-content:center;align-items:center;}
+.tutorial-nav .btn-sm{min-width:70px;}
+.tutorial-nav .btn{min-width:90px;padding:9px 18px;font-size:.95rem;}
+.hud-help-btn{
+  background:rgba(45,27,78,.8);border:1px solid #4a2d7a;border-radius:10px;
+  color:#a07cc5;font-size:1rem;cursor:pointer;padding:4px 10px;
+  transition:background .15s,color .15s;font-family:'Nunito',sans-serif;align-self:center;}
+.hud-help-btn:hover{background:#3d2060;color:#fff;}
+
 .sparkle{position:fixed;pointer-events:none;font-size:1.3rem;
   animation:sparkAnim .7s forwards;z-index:50;}
 @keyframes sparkAnim{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
@@ -473,6 +506,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
       <div class="hud-label">레벨</div>
       <div class="hud-value" id="level-value">1</div>
     </div>
+    <button class="hud-help-btn" id="tutorial-help-btn" title="특수 타일 안내">❓</button>
   </div>
 
   <div class="grid-container" id="grid"></div>
@@ -539,6 +573,21 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
     </div>
   </div>
 
+</div>
+
+<!-- Tutorial overlay -->
+<div class="overlay hidden" id="tutorial-overlay">
+  <div class="tutorial-box">
+    <div class="tutorial-header">
+      <span class="tutorial-progress" id="tutorial-progress">1 / 6</span>
+      <button class="tutorial-close-btn" id="tutorial-close-btn">✕</button>
+    </div>
+    <div id="tutorial-content"></div>
+    <div class="tutorial-nav">
+      <button class="btn-sm" id="tutorial-prev-btn">이전</button>
+      <button class="btn" id="tutorial-next-btn">다음</button>
+    </div>
+  </div>
 </div>
 
 <!-- 설정 오버레이 -->
@@ -886,14 +935,22 @@ function scheduleHint() {
     const best = findBestHint();
     if (!best) { doShuffle(); return; }
     const { r, c, nr, nc, matches } = best;
-    const srcEl = getTile(r, c);
+    // 매치 위치에 들어오는 타일(이동할 타일)을 소스로 표시
+    // (r,c)가 매치 목록에 포함되면 → (nr,nc)의 타일이 그 자리로 이동하는 것이므로 (nr,nc)를 소스로
+    const srcInMatch = matches.some(m => m.r === r && m.c === c);
+    const [sr, sc, dr, dc] = srcInMatch ? [nr, nc, r, c] : [r, c, nr, nc];
+    const srcEl = getTile(sr, sc);
     if (!srcEl) return;
-    const dir = nr < r ? 'up' : nr > r ? 'down' : nc < c ? 'left' : 'right';
+    const dir = dr < sr ? 'up' : dr > sr ? 'down' : dc < sc ? 'left' : 'right';
     srcEl.classList.add('hint-source', `hint-dir-${dir}`);
-    const matchEls = matches.map(m => getTile(m.r, m.c)).filter(Boolean);
+    // 이동 목적지는 현재 다른 타일이 있으므로 매치 강조에서 제외
+    const matchEls = matches
+      .filter(m => !(m.r === dr && m.c === dc))
+      .map(m => getTile(m.r, m.c))
+      .filter(Boolean);
     matchEls.forEach(el => el.classList.add('hint-match'));
     _activeHint = { srcEl, matchEls };
-    gameLog('HINT', `자동힌트 (${r},${c})→${dir} | 최대매치 ${matches.length}개`);
+    gameLog('HINT', `자동힌트 (${sr},${sc})→${dir} | 최대매치 ${matches.length}개`);
   }, 3000);
 }
 
@@ -1012,8 +1069,19 @@ const SPECIAL_EMOJI = { 10:'⚙️', 11:'🌀', 12:'⚡', 13:'💣', 14:'🧲' }
 function setTileVisual(el, type) {
   if (typeof isSpecialTile === 'function' && isSpecialTile(type)) {
     el.className = 'tile ' + getSpecialTileClass(type);
-    el.style.backgroundImage = '';
-    el.textContent = SPECIAL_EMOJI[type] || '★';
+    if (type === SPECIAL_TYPES.DRILL) {
+      const dir = (el.dataset.r !== undefined && el.dataset.c !== undefined)
+        ? getDrillDirection(+el.dataset.r, +el.dataset.c)
+        : (el.dataset.direction || 'row');
+      el.style.backgroundImage = `url("assets/image/drill-${dir}.svg")`;
+      el.style.backgroundSize = '80%';
+      el.style.backgroundPosition = 'center';
+      el.style.backgroundRepeat = 'no-repeat';
+      el.textContent = '';
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = SPECIAL_EMOJI[type] || '★';
+    }
     return;
   }
   el.className = 'tile ' + (TYPE_CLS[type] ?? '');
@@ -1249,6 +1317,19 @@ function endDrag(x, y) {
   if (drag.el) drag.el.style.opacity = '';
   const dx = x - drag.startX, dy = y - drag.startY;
   if (!dragMoved || Math.hypot(dx, dy) < DRAG_THRESH) { onTileClick(drag.r, drag.c); return; }
+
+  // 특수 타일을 직접 스와이프하면 즉시 발동
+  const srcVal = board[drag.r]?.[drag.c];
+  if (!animating && !gameOver && typeof isSpecialTile === 'function' && isSpecialTile(srcVal)) {
+    const swipeDir = Math.abs(dx) >= Math.abs(dy) ? 'row' : 'col';
+    // 드릴은 스와이프 방향으로 재설정
+    if (srcVal === SPECIAL_TYPES.DRILL) setDrillDirection(drag.r, drag.c, swipeDir);
+    gameLog('DRAG', `특수타일 직접발동 (${drag.r},${drag.c}) type=${srcVal} dir=${swipeDir}`);
+    clearSelection();
+    trySwap(drag.r, drag.c, drag.r, drag.c); // 자기 자신과 교환 → 발동만
+    return;
+  }
+
   const dir = getDir(dx, dy);
   if (!dir) { gameLog('DRAG', `방향 미결정 dx=${dx.toFixed(0)} dy=${dy.toFixed(0)}`); return; }
   const { tr, tc } = dir;
@@ -1301,10 +1382,11 @@ async function trySwap(r1, c1, r2, c2) {
   animating = true;
   gameLog('ANIM', `animating=true`);
   gameLog('SWAP', `실행 (${r1},${c1})[${board[r1][c1]}]↔(${r2},${c2})[${board[r2][c2]}]`);
-  swap(r1, c1, r2, c2);
+  if (r1 !== r2 || c1 !== c2) swap(r1, c1, r2, c2);
   AudioManager.play('puzzleMove');
   // ── 특수 타일 즉시 발동 ──
-  for (const [r, c] of [[r1,c1],[r2,c2]]) {
+  const _swapPairs = (r1 === r2 && c1 === c2) ? [[r1,c1]] : [[r1,c1],[r2,c2]];
+  for (const [r, c] of _swapPairs) {
     const val = board[r][c];
     if (!isSpecialTile(val)) continue;
 
@@ -1316,7 +1398,8 @@ async function trySwap(r1, c1, r2, c2) {
               : 'magnet-pull';
 
     if (val === SPECIAL_TYPES.DRILL) {
-      const dir = getTile(r,c)?.dataset.direction || 'row';
+      const dir = getDrillDirection(r, c);
+      clearDrillDirection(r, c);
       fx = getDrillCells(board, r, c, GRID, dir);
       gameLog('SPECIAL', `⚙️ 드릴 발동 at (${r},${c}) dir=${dir} → ${fx.length}칸`);
     } else if (val === SPECIAL_TYPES.BLACKHOLE) {
@@ -1355,7 +1438,9 @@ async function trySwap(r1, c1, r2, c2) {
       setTimeout(() => pivotEl.classList.remove('special-spawn'), 350);
       if (specialType === SPECIAL_TYPES.DRILL) {
         const isRow = m.every(cell => cell.r === m[0].r);
-        pivotEl.dataset.direction = isRow ? 'row' : 'col';
+        const drillDir = isRow ? 'row' : 'col';
+        setDrillDirection(pivot.r, pivot.c, drillDir);
+        setTileVisual(pivotEl, specialType);
         gameLog('SPECIAL', `드릴 방향=${isRow?'행(row)':'열(col)'}`);
       }
       if (specialType === SPECIAL_TYPES.TIMEBOMB) {
@@ -1438,7 +1523,7 @@ async function processMatches(matches, isChain = false) {
               : val === SPECIAL_TYPES.TIMEBOMB  ? 'timebomb-explode'
               :                                   'magnet-pull';
     let fx = [];
-    if      (val === SPECIAL_TYPES.DRILL)      { fx = getDrillCells(board, r, c, GRID, getTile(r,c)?.dataset.direction || 'row'); gameLog('SPECIAL', `⚙️ 드릴(매치) at (${r},${c}) → ${fx.length}칸`); }
+    if      (val === SPECIAL_TYPES.DRILL)      { const _dd = getDrillDirection(r, c); clearDrillDirection(r, c); fx = getDrillCells(board, r, c, GRID, _dd); gameLog('SPECIAL', `⚙️ 드릴(매치) at (${r},${c}) dir=${_dd} → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.BLACKHOLE)  { fx = getBlackholeCells(board, r, c, GRID); gameLog('SPECIAL', `🌀 블랙홀(매치) at (${r},${c}) → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.CHAIN)    { fx = getChainCells(board, r, c, GRID); _drawChainSVG(fx, r, c); gameLog('SPECIAL', `⚡ 체인(매치) at (${r},${c}) → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.TIMEBOMB) { fx = getTimebombCells(board, r, c, GRID); clearTimebomb(r, c); gameLog('BOMB', `💣 타임밤(매치) at (${r},${c}) → ${fx.length}칸`); }
@@ -1836,6 +1921,63 @@ document.getElementById('retry-btn').addEventListener('click', () => {
 });
 
 // ── Google 로그인 UI (auth.js 로드 완료 후 실행) ──
+// ── Tutorial ──────────────────────────────────────────────────
+const TUTORIAL_SLIDES = [
+  { type:'intro',     name:'특수 타일 안내', desc:'4개 이상 매치 시 특수 타일이 생성됩니다!' },
+  { type:'drill',     name:'드릴',           desc:'4개 일렬 매치! 방향에 따라 가로줄 또는 세로줄 전체를 제거합니다.' },
+  { type:'emoji',     icon:'🌀', cls:'tile-blackhole', name:'블랙홀',  desc:'6개 이상 또는 십자(+) 매치! 활성화 시 보드 전체 같은 색 타일을 제거합니다.' },
+  { type:'emoji',     icon:'⚡', cls:'tile-chain',     name:'체인',    desc:'5개 일렬 매치! 주변 타일을 연쇄 폭발시킵니다.' },
+  { type:'emoji',     icon:'💣', cls:'tile-timebomb',  name:'타임밤',  desc:'T자·L자 매치! 일정 턴 후 폭발하여 주변 타일을 제거합니다.' },
+  { type:'emoji',     icon:'🧲', cls:'tile-magnet',    name:'자석',    desc:'ㄱ·ㄴ자 매치! 활성화 시 주변 타일을 끌어당겨 제거합니다.' },
+];
+let _tutSlide = 0;
+
+function _tutIconHTML(slide) {
+  if (slide.type === 'intro') return `<div class="tutorial-intro-icon">✨</div>`;
+  if (slide.type === 'drill') return `
+    <div class="tutorial-drill-row">
+      <img src="assets/image/drill-row.svg" class="tutorial-drill-img" title="가로 드릴">
+      <img src="assets/image/drill-col.svg" class="tutorial-drill-img" title="세로 드릴">
+    </div>`;
+  return `<div class="tutorial-tile-mock ${slide.cls}">${slide.icon}</div>`;
+}
+
+function _renderTutSlide() {
+  const slide = TUTORIAL_SLIDES[_tutSlide];
+  const total = TUTORIAL_SLIDES.length;
+  document.getElementById('tutorial-progress').textContent = `${_tutSlide + 1} / ${total}`;
+  document.getElementById('tutorial-content').innerHTML =
+    `${_tutIconHTML(slide)}
+     <div class="tutorial-slide-name">${slide.name}</div>
+     <div class="tutorial-slide-desc">${slide.desc}</div>`;
+  const isLast = _tutSlide === total - 1;
+  document.getElementById('tutorial-next-btn').textContent = isLast ? '게임 시작' : '다음';
+  document.getElementById('tutorial-prev-btn').style.visibility = _tutSlide === 0 ? 'hidden' : 'visible';
+}
+
+function showTutorial() {
+  _tutSlide = 0;
+  _renderTutSlide();
+  document.getElementById('tutorial-overlay').classList.remove('hidden');
+}
+
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+  localStorage.setItem('rescuecat_tutorial_seen', '1');
+}
+
+document.getElementById('tutorial-next-btn').addEventListener('click', () => {
+  if (_tutSlide < TUTORIAL_SLIDES.length - 1) { _tutSlide++; _renderTutSlide(); }
+  else closeTutorial();
+});
+document.getElementById('tutorial-prev-btn').addEventListener('click', () => {
+  if (_tutSlide > 0) { _tutSlide--; _renderTutSlide(); }
+});
+document.getElementById('tutorial-close-btn').addEventListener('click', closeTutorial);
+document.getElementById('tutorial-help-btn').addEventListener('click', showTutorial);
+
+if (!localStorage.getItem('rescuecat_tutorial_seen')) showTutorial();
+
 window.addEventListener('load', function () {
   const loginBtn   = document.getElementById('title-login-btn');
   const userDiv    = document.getElementById('title-user');

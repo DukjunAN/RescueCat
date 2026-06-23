@@ -188,3 +188,28 @@ function tickTimebombs() {
 function clearTimebomb(r, c) {
   delete timebombCounters[`${r},${c}`];
 }
+
+// ─────────────────────────────────────────────────────────────
+// 6. drillDirections  (드릴 방향 관리)
+// ─────────────────────────────────────────────────────────────
+const drillDirections = {};
+
+function setDrillDirection(r, c, dir) {
+  drillDirections[`${r},${c}`] = dir;
+}
+
+function getDrillDirection(r, c) {
+  return drillDirections[`${r},${c}`] || 'row';
+}
+
+function moveDrillDirection(fromR, fromC, toR, toC) {
+  const key = `${fromR},${fromC}`;
+  if (drillDirections[key] !== undefined) {
+    drillDirections[`${toR},${toC}`] = drillDirections[key];
+    delete drillDirections[key];
+  }
+}
+
+function clearDrillDirection(r, c) {
+  delete drillDirections[`${r},${c}`];
+}

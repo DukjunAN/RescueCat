@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 배경 광택 -->
+  <circle cx="32" cy="32" r="28" fill="#FF7A00" opacity="0.18"/>
+
+  <!-- 드릴 몸통 (가로 방향) -->
+  <rect x="6" y="24" width="30" height="16" rx="4" fill="#C25A00"/>
+  <rect x="6" y="26" width="30" height="5"  rx="2" fill="#FF9030"/>
+  <rect x="6" y="33" width="30" height="5"  rx="2" fill="#E07020"/>
+
+  <!-- 손잡이 -->
+  <circle cx="11" cy="32" r="7"  fill="#A04800"/>
+  <circle cx="11" cy="32" r="4"  fill="#FF9030"/>
+  <circle cx="11" cy="32" r="1.5" fill="#FFD080"/>
+
+  <!-- 삼각 드릴 팁 (오른쪽) -->
+  <polygon points="36,18 60,32 36,46" fill="#C25A00"/>
+  <polygon points="36,20 56,32 36,44" fill="#FF7A00"/>
+  <polygon points="36,23 51,32 36,41" fill="#FFB060"/>
+
+  <!-- 속도선 (위/아래) -->
+  <line x1="10" y1="15" x2="32" y2="15" stroke="#FF9030" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="14" y1="10" x2="28" y2="10" stroke="#FF9030" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="10" y1="49" x2="32" y2="49" stroke="#FF9030" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="14" y1="54" x2="28" y2="54" stroke="#FF9030" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+</svg>
