@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rescuecat-cache-v1';
+const CACHE_NAME = 'rescuecat-cache-v2';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -29,8 +29,7 @@ self.addEventListener('activate', event => {
 const BYPASS_DOMAINS = [
   'supabase.co',
   'googleapis.com',
-  'accounts.google.com',
-  'jsdelivr.net'
+  'accounts.google.com'
 ];
 
 self.addEventListener('fetch', event => {

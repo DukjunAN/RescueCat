@@ -2,3 +2,5 @@
 .env
 *.txt
 supabase/.env
+supabase/.temp/
+assets/models/
