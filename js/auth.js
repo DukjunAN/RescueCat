@@ -1,30 +1,33 @@
 // js/auth.js
-// 의존: supabase-client.js (window.supabaseClient)
-
-// 로그인 유저 캐시 — 네트워크 없이 즉시 참조
 window._cachedUser = null;
 
-// 페이지 로드 시 로컬 세션에서 즉시 복원 + 미전송 데이터 동기화 시도
+function _authLog(msg) {
+  if (typeof gameLog === 'function') gameLog('AUTH', msg);
+  console.log('[AUTH]', msg);
+}
+
+// 페이지 로드 시 로컬 세션에서 즉시 복원
 window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
   window._cachedUser = session?.user ?? null;
   if (session?.user) {
-    if (typeof window.recordLogin      === 'function') window.recordLogin(session.user);
-    // 로컬에 쌓인 미전송 데이터를 페이지 로드 시 즉시 동기화 + 연결 상태 확인
+    _authLog(`✅ 세션 복원: ${session.user.email}`);
+    if (typeof window.recordLogin === 'function') window.recordLogin(session.user);
+    // 미전송 데이터 동기화
     setTimeout(async () => {
       if (typeof window.checkSupabaseConnection === 'function') {
         const ok = await window.checkSupabaseConnection();
         if (ok && typeof window.flushPendingSaves === 'function') window.flushPendingSaves();
       }
-    }, 2000); // leaderboard.js 로드 완료 대기 후 실행
+    }, 2000);
+  } else {
+    _authLog('🔓 비로그인 상태 (세션 없음)');
   }
 });
 
 window.loginWithGoogle = function () {
   return window.supabaseClient.auth.signInWithOAuth({
     provider: 'google',
-    options: {
-      redirectTo: window.location.href
-    }
+    options: { redirectTo: window.location.href }
   });
 };
 
@@ -42,12 +45,13 @@ window.onAuthReady = function (callback) {
     window._cachedUser = session?.user ?? null;
     callback(session?.user ?? null);
     if (session?.user) {
-      // 로그인 시 로컬에 쌓인 미전송 데이터 동기화
+      _authLog(`🔑 인증 이벤트: ${_event} | ${session.user.email}`);
       if (typeof window.flushPendingSaves === 'function') window.flushPendingSaves();
-      // 접속 기록 (SIGNED_IN 이벤트만 — 실제 로그인 시점)
       if (_event === 'SIGNED_IN' && typeof window.recordLogin === 'function') {
         window.recordLogin(session.user);
       }
+    } else {
+      _authLog(`🔑 인증 이벤트: ${_event} | 로그아웃`);
     }
   });
 };

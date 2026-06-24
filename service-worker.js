@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rescuecat-cache-v3';
+const CACHE_NAME = 'rescuecat-cache-v4';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -34,10 +34,27 @@ const BYPASS_DOMAINS = [
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+
   if (BYPASS_DOMAINS.some(d => url.hostname.endsWith(d))) {
     return;
   }
 
+  // JS·CSS 파일은 항상 네트워크 우선 — 업데이트가 즉시 반영되도록
+  const isCode = /\.(js|css)(\?|$)/.test(url.pathname);
+  if (isCode) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 이미지·폰트 등 정적 파일은 캐시 우선
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;

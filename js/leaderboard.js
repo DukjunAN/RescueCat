@@ -137,10 +137,13 @@ function _detectDevice() {
 window.recordLogin = async function (user) {
   if (!user) return;
 
-  // 1시간 내 중복 기록 방지 (페이지 새로고침마다 쌓이는 것 방지)
   const LAST_KEY = 'rc_last_login_recorded';
   const lastTs = parseInt(localStorage.getItem(LAST_KEY) || '0', 10);
-  if (Date.now() - lastTs < 60 * 60 * 1000) return;
+  const elapsed = Date.now() - lastTs;
+  if (elapsed < 60 * 60 * 1000) {
+    _dbLog(`⏭ 접속기록 생략 (${Math.round(elapsed/60000)}분 전 기록됨, 1시간 내 중복 방지)`);
+    return;
+  }
 
   const payload = {
     user_id:      user.id,
@@ -149,6 +152,8 @@ window.recordLogin = async function (user) {
     device:       _detectDevice()
   };
 
+  _dbLog(`📋 접속기록 저장 시도 | ${payload.display_name} | ${payload.device}`);
+
   try {
     const { error } = await window.supabaseClient
       .from('login_history')
@@ -156,12 +161,12 @@ window.recordLogin = async function (user) {
 
     if (!error) {
       localStorage.setItem(LAST_KEY, Date.now().toString());
-      console.log('[recordLogin] 접속 기록 완료', payload.device);
+      _dbLog(`✅ 접속기록 완료 | ${payload.device}`);
     } else {
-      console.error('[recordLogin]', error.message);
+      _dbLog(`❌ 접속기록 실패: ${error.message}`);
     }
   } catch (e) {
-    console.error('[recordLogin] 네트워크 오류', e.message);
+    _dbLog(`❌ 접속기록 네트워크 오류: ${e.message}`);
   }
 };
 
