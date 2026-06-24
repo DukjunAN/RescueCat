@@ -429,7 +429,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   background:rgba(0,0,20,0.9);color:#6af;border:1px solid #448;
   border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;
   font-family:monospace;}
-#debug-panel{position:fixed;bottom:30px;right:0;width:440px;max-height:46vh;
+#debug-panel{position:fixed;bottom:30px;right:0;width:min(440px,100vw);max-height:46vh;
   background:rgba(0,0,12,0.96);border:1px solid #336;border-radius:8px 0 0 0;
   font-family:monospace;font-size:11px;z-index:99999;display:flex;flex-direction:column;}
 #debug-panel.hidden{display:none;}
@@ -448,6 +448,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
 .dl-CHAIN{color:#ff80ff;}.dl-BARRIER{color:#ff9944;}
 .dl-LEVEL{color:#fff;}.dl-ANIM{color:#446;}
 .dl-DRAG{color:#44cccc;}.dl-TIMER{color:#ff6666;}.dl-HINT{color:#aaa;}
+.dl-AUTH{color:#ffd080;}.dl-DB{color:#80ff99;}
 
 /* ── 자동 힌트 ── */
 .hint-source{z-index:30;position:relative;}
