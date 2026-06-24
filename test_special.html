@@ -44,10 +44,9 @@
   #btn-drill     { border-color: orange; color: orange; }
   #btn-blackhole { border-color: #bf7fff; color: #bf7fff; }
   #btn-chain     { border-color: cyan;   color: cyan; }
-  #btn-timebomb  { border-color: #ff6666; color: #ff6666; }
+  #btn-tilebomb  { border-color: #ff6666; color: #ff6666; }
   #btn-magnet    { border-color: lime;   color: lime; }
-  #btn-turn      { border-color: gold; color: gold; display: none; }
-  #btn-reset     { border-color: #aaa; color: #aaa; }
+#btn-reset     { border-color: #aaa; color: #aaa; }
 
   /* ── 보드 ── */
   #board-wrap {
@@ -113,10 +112,9 @@
   <button id="btn-drill">⚙️ 드릴 발동</button>
   <button id="btn-blackhole">🌀 블랙홀 발동</button>
   <button id="btn-chain">⚡ 체인 발동</button>
-  <button id="btn-timebomb">💣 타임밤 등록</button>
+  <button id="btn-tilebomb">💥 타일밤 발동</button>
   <button id="btn-magnet">🧲 자석 발동</button>
-  <button id="btn-turn">▶ 턴 넘기기</button>
-  <button id="btn-reset">🔄 보드 초기화</button>
+<button id="btn-reset">🔄 보드 초기화</button>
 </div>
 
 <div id="board-wrap">
@@ -175,10 +173,6 @@ function refreshTileStyle(tile, r, c) {
   if (val >= 10) {
     tile.classList.add('type-special', getSpecialTileClass(val));
     tile.textContent = val;
-    if (val === SPECIAL_TYPES.TIMEBOMB && timebombCounters[`${r},${c}`] !== undefined) {
-      tile.dataset.countdown = timebombCounters[`${r},${c}`];
-      tile.classList.add('tile-timebomb', `timebomb-${timebombCounters[`${r},${c}`]}`);
-    }
   } else {
     tile.classList.add(TYPE_COLORS[val] || 'type-0');
     tile.textContent = val;
@@ -240,39 +234,13 @@ document.getElementById('btn-chain').addEventListener('click', () => {
   highlightCells(cells, 'chain-zap', '체인');
 });
 
-document.getElementById('btn-timebomb').addEventListener('click', () => {
-  // board[3][3]을 타임밤 특수 타일로 세팅
-  board[3][3] = SPECIAL_TYPES.TIMEBOMB;
-  setTimebomb(3, 3);
+document.getElementById('btn-tilebomb').addEventListener('click', () => {
+  board[3][3] = SPECIAL_TYPES.TILEBOMB;
   const tile = getTile(3, 3);
   if (tile) refreshTileStyle(tile, 3, 3);
-  document.getElementById('btn-turn').style.display = 'inline-block';
-  addLog('[타임밤] (3,3)에 타임밤 등록 — 카운트: 3턴. [턴 넘기기] 버튼 활성화');
-});
-
-document.getElementById('btn-turn').addEventListener('click', () => {
-  const bombed = tickTimebombs();
-  if (bombed.length > 0) {
-    const cells = getTimebombCells(board, bombed[0].r, bombed[0].c, GRID);
-    board[3][3] = Math.floor(Math.random() * 5); // 폭발 후 일반 타일로 복원
-    highlightCells(cells, 'timebomb-explode', '타임밤 폭발');
-    document.getElementById('btn-turn').style.display = 'none';
-    addLog(`[타임밤] 폭발! 영향 셀 ${cells.length}개`);
-  } else {
-    // 남은 타임밤 카운트 갱신
-    let remaining = false;
-    for (const [key, turns] of Object.entries(timebombCounters)) {
-      const [tr, tc] = key.split(',').map(Number);
-      const el = getTile(tr, tc);
-      if (!el) continue;
-      remaining = true;
-      el.dataset.countdown = turns;
-      el.classList.remove('timebomb-3','timebomb-2','timebomb-1');
-      el.classList.add(`timebomb-${turns}`);
-    }
-    if (!remaining) document.getElementById('btn-turn').style.display = 'none';
-    addLog(`[턴 경과] 타임밤 카운트 갱신 — 남은 카운터: ${JSON.stringify(timebombCounters)}`);
-  }
+  const cells = getTilebombCells(board, 3, 3, GRID);
+  highlightCells(cells, 'tilebomb-explode', '타일밤');
+  addLog('[타일밤] (3,3) 즉시 발동');
 });
 
 document.getElementById('btn-magnet').addEventListener('click', () => {
@@ -281,9 +249,6 @@ document.getElementById('btn-magnet').addEventListener('click', () => {
 });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
-  // 타임밤 카운터 초기화
-  for (const key of Object.keys(timebombCounters)) delete timebombCounters[key];
-  document.getElementById('btn-turn').style.display = 'none';
   document.getElementById('log').innerHTML = '';
   createBoard();
   renderBoard();

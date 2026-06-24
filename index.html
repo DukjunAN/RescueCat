@@ -381,7 +381,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
 .tutorial-tile-mock.tile-drill{box-shadow:0 0 14px 4px orange;border:2px solid orange;background:#1a0a2e;}
 .tutorial-tile-mock.tile-blackhole{box-shadow:0 0 14px 4px purple;border:2px solid purple;background:#1a0a2e;}
 .tutorial-tile-mock.tile-chain{box-shadow:0 0 14px 4px cyan;border:2px solid cyan;background:#1a0a2e;}
-.tutorial-tile-mock.tile-timebomb{box-shadow:0 0 14px 4px red;border:2px solid red;background:#1a0a2e;}
+.tutorial-tile-mock.tile-tilebomb{box-shadow:0 0 14px 4px red;border:2px solid red;background:#1a0a2e;}
 .tutorial-tile-mock.tile-magnet{box-shadow:0 0 14px 4px lime;border:2px solid lime;background:#1a0a2e;}
 .tutorial-intro-icon{font-size:3rem;margin-bottom:12px;}
 .tutorial-drill-row{display:flex;gap:12px;justify-content:center;margin-bottom:12px;}
@@ -410,6 +410,13 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   text-shadow:0 0 10px #56ab2f;pointer-events:none;z-index:70;
   animation:bonusFloat 1s forwards;}
 @keyframes bonusFloat{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+.drill-subtitle{position:absolute;bottom:12%;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.72);color:#fff;font-size:.85rem;font-weight:700;
+  padding:6px 16px;border-radius:20px;pointer-events:none;z-index:60;
+  white-space:nowrap;border:1px solid rgba(255,140,0,.6);
+  animation:drillHint .12s ease-out;}
+.drill-subtitle.hidden{display:none;}
+@keyframes drillHint{0%{opacity:0;transform:translateX(-50%) scale(.85)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
 
 @media(max-width:560px){
   :root{--sz:35px;--gap:2px;}
@@ -441,7 +448,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   padding:4px 8px;background:#0a0a25;border-bottom:1px solid #223;flex-shrink:0;}
 #debug-header span{color:#668;font-size:10px;}
 #debug-clear{font-size:10px;padding:2px 6px;cursor:pointer;background:#223;color:#99b;border:none;border-radius:3px;}
-#debug-log{overflow-y:auto;flex:1;padding:2px 4px;}
+#debug-log{overflow-y:auto;flex:1;padding:2px 4px;user-select:text;}
 .dl{padding:1px 2px;border-bottom:1px solid #0a0a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .dl:hover{white-space:normal;overflow:visible;background:#0d0d28;z-index:1;position:relative;word-break:break-all;}
 .dl-t{color:#445;margin-right:3px;}
@@ -516,7 +523,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
     </div>
     <div class="hud-card timer-ring-wrap">
       <div class="hud-label">시간</div>
-      <div class="hud-value" id="timer-value">60</div>
+      <div class="hud-value" id="timer-value">30</div>
       <svg class="timer-ring" width="56" height="56" viewBox="0 0 56 56">
         <circle id="timer-ring-circle" cx="28" cy="28" r="25" transform="rotate(-90 28 28)"/>
       </svg>
@@ -528,7 +535,9 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
     <button class="hud-help-btn" id="tutorial-help-btn" title="특수 타일 안내">❓</button>
   </div>
 
-  <div class="grid-container" id="grid"></div>
+  <div class="grid-container" id="grid">
+    <div id="drill-subtitle" class="drill-subtitle hidden"></div>
+  </div>
 
   <div class="controls">
     <!-- <button class="btn-sm" id="shuffle-btn">🔀 셔플</button> -->
@@ -979,7 +988,7 @@ let lastFrameTime = 0;
 let urgency = 0;
 let score = 0, level = 1;
 let animating = false, selected = null;
-let timeLeft = 60, timerInterval = null;
+let timeLeft = 30, timerInterval = null;
 let barriersLeft = 8;
 let gameOver = false;
 let _warned20 = false, _warned10 = false;
@@ -1024,7 +1033,7 @@ const BARRIER_EMOJIS = ['🧱','🪵','⛓️','🔒','🪨','🛡️','⚔️',
 // config/levels.js 에서 로드
 const _lc = window.LEVEL_CONFIG || {};
 const _ld = _lc.defaults || {};
-const BASE_TIME      = _ld.baseTime     || 60;
+const BASE_TIME      = _ld.baseTime     || 30;
 const TIME_PER_MATCH = _ld.timePerMatch || 2;
 const MAX_LEVEL      = _lc.maxLevel     || 100;
 
@@ -1085,6 +1094,17 @@ async function loadLevelAnimals() {
 }
 
 const SPECIAL_EMOJI = { 10:'⚙️', 11:'🌀', 12:'⚡', 13:'💣', 14:'🧲' };
+
+let _drillSubtitleTimer = null;
+function showDrillSubtitle(msg) {
+  const el = document.getElementById('drill-subtitle');
+  if (!el) return;
+  if (_drillSubtitleTimer) clearTimeout(_drillSubtitleTimer);
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  void el.offsetWidth; // reflow → animation 재시작
+  _drillSubtitleTimer = setTimeout(() => el.classList.add('hidden'), 1600);
+}
 
 function setTileVisual(el, type) {
   if (typeof isSpecialTile === 'function' && isSpecialTile(type)) {
@@ -1342,8 +1362,23 @@ function endDrag(x, y) {
   const srcVal = board[drag.r]?.[drag.c];
   if (!animating && !gameOver && typeof isSpecialTile === 'function' && isSpecialTile(srcVal)) {
     const swipeDir = Math.abs(dx) >= Math.abs(dy) ? 'row' : 'col';
-    // 드릴은 스와이프 방향으로 재설정
-    if (srcVal === SPECIAL_TYPES.DRILL) setDrillDirection(drag.r, drag.c, swipeDir);
+    const _swipeDir = getDir(dx, dy);
+    const targetVal = _swipeDir && inBounds(_swipeDir.tr, _swipeDir.tc) ? board[_swipeDir.tr][_swipeDir.tc] : null;
+    // 대상도 특수타일이면 조합 경로로 처리 (self-swap 아님)
+    if (targetVal !== null && isSpecialTile(targetVal)) {
+      gameLog('DRAG', `특수+특수 조합시도 (${drag.r},${drag.c})[${srcVal}]↔(${_swipeDir.tr},${_swipeDir.tc})[${targetVal}]`);
+      clearSelection();
+      trySwap(drag.r, drag.c, _swipeDir.tr, _swipeDir.tc);
+      return;
+    }
+    if (srcVal === SPECIAL_TYPES.DRILL) {
+      const storedDir = getDrillDirection(drag.r, drag.c);
+      if (swipeDir !== storedDir) {
+        showDrillSubtitle(storedDir === 'row' ? '➡ 가로로 스와이프하세요' : '⬇ 세로로 스와이프하세요');
+        gameLog('DRAG', `드릴 방향 불일치 at (${drag.r},${drag.c}) stored=${storedDir} swipe=${swipeDir} → 취소`);
+        return;
+      }
+    }
     gameLog('DRAG', `특수타일 직접발동 (${drag.r},${drag.c}) type=${srcVal} dir=${swipeDir}`);
     clearSelection();
     trySwap(drag.r, drag.c, drag.r, drag.c); // 자기 자신과 교환 → 발동만
@@ -1398,12 +1433,50 @@ function adj(r1, c1, r2, c2) { return (Math.abs(r1 - r2) === 1 && c1 === c2) || 
 
 async function trySwap(r1, c1, r2, c2) {
   clearAutoHint();
-  const _SN = {10:'드릴',11:'블랙홀',12:'체인',13:'타임밤',14:'자석'};
+  const _SN = {10:'드릴',11:'블랙홀',12:'체인',13:'타일밤',14:'자석'};
   animating = true;
   gameLog('ANIM', `animating=true`);
   gameLog('SWAP', `실행 (${r1},${c1})[${board[r1][c1]}]↔(${r2},${c2})[${board[r2][c2]}]`);
-  if (r1 !== r2 || c1 !== c2) swap(r1, c1, r2, c2);
+  const _preV1 = board[r1][c1], _preV2 = board[r2][c2];
+  if (r1 !== r2 || c1 !== c2) {
+    swap(r1, c1, r2, c2);
+    if (_preV1 === SPECIAL_TYPES.DRILL) moveDrillDirection(r1, c1, r2, c2);
+    if (_preV2 === SPECIAL_TYPES.DRILL) moveDrillDirection(r2, c2, r1, c1);
+  }
   AudioManager.play('puzzleMove');
+  // ── 특수 + 특수 조합 체크 ──
+  if (r1 !== r2 || c1 !== c2) {
+    const valA = board[r1][c1], valB = board[r2][c2];
+    if (isSpecialTile(valA) && isSpecialTile(valB)) {
+      const _rank = v => v === SPECIAL_TYPES.DRILL ? 1 : v === SPECIAL_TYPES.BLACKHOLE ? 2 : v === SPECIAL_TYPES.CHAIN ? 3 : 0;
+      const _combo = (a, b) => {
+        if (a >= 13 || b >= 13) return null;          // 업그레이드 포함 → 불가
+        if (a === b) return null;                       // 동종 → 불가(드릴+드릴, 체인+체인 미정)
+        if (a === SPECIAL_TYPES.CHAIN || b === SPECIAL_TYPES.CHAIN) return SPECIAL_TYPES.MAGNET;
+        return SPECIAL_TYPES.TILEBOMB;                 // 블랙홀+드릴
+      };
+      const comboResult = _combo(valA, valB);
+      if (comboResult !== null) {
+        const [hr, hc, lr, lc] = _rank(valA) >= _rank(valB) ? [r1,c1,r2,c2] : [r2,c2,r1,c1];
+        board[hr][hc] = comboResult;
+        board[lr][lc] = -1;
+        renderBoard();
+        const comboEl = getTile(hr, hc);
+        comboEl?.classList.add('special-spawn');
+        setTimeout(() => comboEl?.classList.remove('special-spawn'), 350);
+        gameLog('SPECIAL', `✨ 조합: ${_SN[valA]}+${_SN[valB]} → ${_SN[comboResult]} at (${hr},${hc})`);
+        await dropAndFill();
+        animating = false;
+        scheduleHint();
+      } else {
+        gameLog('SPECIAL', `특수+특수 조합 불가: ${_SN[valA]}+${_SN[valB]} → 스왑만`);
+        animating = false;
+        scheduleHint();
+      }
+      return;
+    }
+  }
+
   // ── 특수 타일 즉시 발동 ──
   const _swapPairs = (r1 === r2 && c1 === c2) ? [[r1,c1]] : [[r1,c1],[r2,c2]];
   for (const [r, c] of _swapPairs) {
@@ -1414,28 +1487,40 @@ async function trySwap(r1, c1, r2, c2) {
     const cls = val === SPECIAL_TYPES.DRILL    ? 'drill-firing'
               : val === SPECIAL_TYPES.BLACKHOLE ? 'blackhole-pull'
               : val === SPECIAL_TYPES.CHAIN     ? 'chain-zap'
-              : val === SPECIAL_TYPES.TIMEBOMB  ? 'timebomb-explode'
+              : val === SPECIAL_TYPES.TILEBOMB  ? 'tilebomb-explode'
               : 'magnet-pull';
 
     if (val === SPECIAL_TYPES.DRILL) {
-      const dir = getDrillDirection(r, c);
+      const drillDir = getDrillDirection(r, c);
+      const isSelfSwap = (r1 === r2 && c1 === c2);
+      const swapDir = isSelfSwap ? drillDir : (r1 === r2 ? 'row' : 'col');
+      if (!isSelfSwap && swapDir !== drillDir) {
+        swap(r1, c1, r2, c2); // 되돌리기
+        showDrillSubtitle(drillDir === 'row' ? '➡ 가로로 스와이프하세요' : '⬇ 세로로 스와이프하세요');
+        gameLog('SPECIAL', `⚙️ 드릴 방향 불일치 at (${r},${c}) stored=${drillDir} swap=${swapDir} → 취소`);
+        animating = false;
+        return;
+      }
       clearDrillDirection(r, c);
-      fx = getDrillCells(board, r, c, GRID, dir);
-      gameLog('SPECIAL', `⚙️ 드릴 발동 at (${r},${c}) dir=${dir} → ${fx.length}칸`);
+      fx = getDrillCells(board, r, c, GRID, drillDir);
+      gameLog('SPECIAL', `⚙️ 드릴 발동 at (${r},${c}) dir=${drillDir} → ${fx.length}칸`);
     } else if (val === SPECIAL_TYPES.BLACKHOLE) {
       fx = getBlackholeCells(board, r, c, GRID);
       gameLog('SPECIAL', `🌀 블랙홀 발동 at (${r},${c}) → ${fx.length}칸`);
     } else if (val === SPECIAL_TYPES.CHAIN) {
-      fx = getChainCells(board, r, c, GRID);
+      const _isSelf = (r1 === r2 && c1 === c2);
+      const _partner = _isSelf ? -1 : (r === r2 && c === c2 ? _preV2 : _preV1);
+      fx = getChainCells(board, r, c, GRID, _partner);
       _drawChainSVG(fx, r, c);
-      gameLog('SPECIAL', `⚡ 체인 발동 at (${r},${c}) → ${fx.length}칸`);
-    } else if (val === SPECIAL_TYPES.TIMEBOMB) {
-      fx = getTimebombCells(board, r, c, GRID);
-      clearTimebomb(r, c);
-      gameLog('BOMB', `💣 타임밤 즉시발동 at (${r},${c}) → ${fx.length}칸`);
+      gameLog('SPECIAL', `⚡ 체인 발동 at (${r},${c}) targetType=${_partner} → ${fx.length}칸`);
+    } else if (val === SPECIAL_TYPES.TILEBOMB) {
+      fx = getTilebombCells(board, r, c, GRID);
+      gameLog('BOMB', `💥 타일밤 발동 at (${r},${c}) → ${fx.length}칸`);
     } else if (val === SPECIAL_TYPES.MAGNET) {
-      fx = getMagnetCells(board, r, c, GRID);
-      gameLog('SPECIAL', `🧲 자석 발동 at (${r},${c}) → ${fx.length}칸`);
+      const _isSelf = (r1 === r2 && c1 === c2);
+      const _partner = _isSelf ? -1 : (r === r2 && c === c2 ? _preV2 : _preV1);
+      fx = getMagnetCells(board, r, c, GRID, _partner);
+      gameLog('SPECIAL', `🧲 자석 발동 at (${r},${c}) targetType=${_partner} → ${fx.length}칸`);
     }
 
     fx.forEach(cell => getTile(cell.r, cell.c)?.classList.add(cls));
@@ -1463,12 +1548,7 @@ async function trySwap(r1, c1, r2, c2) {
         setTileVisual(pivotEl, specialType);
         gameLog('SPECIAL', `드릴 방향=${isRow?'행(row)':'열(col)'}`);
       }
-      if (specialType === SPECIAL_TYPES.TIMEBOMB) {
-        setTimebomb(pivot.r, pivot.c);
-        pivotEl.dataset.countdown = '3';
-        pivotEl.classList.add('timebomb-3');
-        gameLog('BOMB', `💣 타임밤 등록 at (${pivot.r},${pivot.c}) 카운트=3`);
-      }
+
     }
     m.splice(m.findIndex(cell => cell.r === pivot.r && cell.c === pivot.c), 1);
   }
@@ -1540,13 +1620,13 @@ async function processMatches(matches, isChain = false) {
     const cls = val === SPECIAL_TYPES.DRILL    ? 'drill-firing'
               : val === SPECIAL_TYPES.BLACKHOLE ? 'blackhole-pull'
               : val === SPECIAL_TYPES.CHAIN     ? 'chain-zap'
-              : val === SPECIAL_TYPES.TIMEBOMB  ? 'timebomb-explode'
+              : val === SPECIAL_TYPES.TILEBOMB  ? 'tilebomb-explode'
               :                                   'magnet-pull';
     let fx = [];
     if      (val === SPECIAL_TYPES.DRILL)      { const _dd = getDrillDirection(r, c); clearDrillDirection(r, c); fx = getDrillCells(board, r, c, GRID, _dd); gameLog('SPECIAL', `⚙️ 드릴(매치) at (${r},${c}) dir=${_dd} → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.BLACKHOLE)  { fx = getBlackholeCells(board, r, c, GRID); gameLog('SPECIAL', `🌀 블랙홀(매치) at (${r},${c}) → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.CHAIN)    { fx = getChainCells(board, r, c, GRID); _drawChainSVG(fx, r, c); gameLog('SPECIAL', `⚡ 체인(매치) at (${r},${c}) → ${fx.length}칸`); }
-    else if (val === SPECIAL_TYPES.TIMEBOMB) { fx = getTimebombCells(board, r, c, GRID); clearTimebomb(r, c); gameLog('BOMB', `💣 타임밤(매치) at (${r},${c}) → ${fx.length}칸`); }
+    else if (val === SPECIAL_TYPES.TILEBOMB)  { fx = getTilebombCells(board, r, c, GRID); gameLog('BOMB', `💥 타일밤(매치) at (${r},${c}) → ${fx.length}칸`); }
     else if (val === SPECIAL_TYPES.MAGNET)     { fx = getMagnetCells(board, r, c, GRID); gameLog('SPECIAL', `🧲 자석(매치) at (${r},${c}) → ${fx.length}칸`); }
     fx.forEach(cell => { getTile(cell.r, cell.c)?.classList.add(cls); extraCells.push(cell); });
   }
@@ -1572,27 +1652,10 @@ async function processMatches(matches, isChain = false) {
   const chain = findMatches();
   if (chain.length > 0) { gameLog('CHAIN', `연쇄! ${chain.length}개 추가`); await delay(80); await processMatches(chain, true); }
   else {
-    const bombed = tickTimebombs();
-    if (bombed.length > 0) {
-      gameLog('BOMB', `💥 타임밤 폭발! ${bombed.length}개`);
-      bombed.forEach(({ r, c }) => getTile(r, c)?.classList.add('timebomb-explode'));
-      await delay(400);
-      await processMatches(bombed, true);
-    } else {
-      for (const [key, turns] of Object.entries(timebombCounters)) {
-        const [tr, tc] = key.split(',').map(Number);
-        const el = getTile(tr, tc);
-        if (!el) continue;
-        el.dataset.countdown = turns;
-        el.classList.remove('timebomb-3', 'timebomb-2', 'timebomb-1');
-        el.classList.add(`timebomb-${turns}`);
-        gameLog('BOMB', `💣 카운트 (${tr},${tc})→${turns}턴`);
-      }
       document.getElementById('score-value').textContent = score;
       gameLog('ANIM', `animating=false | 턴완료 score=${score}`);
       animating = false;
       scheduleHint();
-    }
   }
 }
 
@@ -1635,7 +1698,13 @@ async function dropAndFill() {
   for (let c = 0; c < GRID; c++) {
     let w = GRID - 1;
     for (let r = GRID - 1; r >= 0; r--) {
-      if (board[r][c] >= 0) { board[w][c] = board[r][c]; if (w !== r) board[r][c] = -1; w--; }
+      if (board[r][c] >= 0) {
+        if (w !== r) {
+          if (board[r][c] === SPECIAL_TYPES.DRILL) moveDrillDirection(r, c, w, c);
+          board[w][c] = board[r][c]; board[r][c] = -1;
+        }
+        w--;
+      }
     }
     while (w >= 0) { board[w][c] = rnd(); w--; }
   }
@@ -1998,7 +2067,7 @@ const TUTORIAL_SLIDES = [
   { type:'drill',     name:'드릴',           desc:'4개 일렬 매치! 방향에 따라 가로줄 또는 세로줄 전체를 제거합니다.' },
   { type:'emoji',     icon:'🌀', cls:'tile-blackhole', name:'블랙홀',  desc:'6개 이상 또는 십자(+) 매치! 활성화 시 보드 전체 같은 색 타일을 제거합니다.' },
   { type:'emoji',     icon:'⚡', cls:'tile-chain',     name:'체인',    desc:'5개 일렬 매치! 주변 타일을 연쇄 폭발시킵니다.' },
-  { type:'emoji',     icon:'💣', cls:'tile-timebomb',  name:'타임밤',  desc:'T자·L자 매치! 일정 턴 후 폭발하여 주변 타일을 제거합니다.' },
+  { type:'emoji',     icon:'💣', cls:'tile-tilebomb',  name:'타일밤',  desc:'특수 타일 조합으로 생성! 즉시 폭발하여 주변 타일을 제거합니다.' },
   { type:'emoji',     icon:'🧲', cls:'tile-magnet',    name:'자석',    desc:'ㄱ·ㄴ자 매치! 활성화 시 주변 타일을 끌어당겨 제거합니다.' },
 ];
 let _tutSlide = 0;

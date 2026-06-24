@@ -1,7 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg"
-     width="800px" height="800px" viewBox="0 0 32 32" xml:space="preserve">
-<path fill="#FF8C00" d="M31.695,4.777c-0.255-0.767-0.854-1.346-1.592-1.587l0.825-1.767
+<?xml version="1.0" encoding="utf-8"?><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Uploaded to svgrepo.com" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 width="800px" height="800px" viewBox="0 0 32 32" xml:space="preserve">
+<style type="text/css">
+	.blueprint_een{fill:#111918;}
+	.st0{fill:#0B1719;}
+</style>
+<path class="blueprint_een" d="M31.695,4.777c-0.255-0.767-0.854-1.346-1.592-1.587l0.825-1.767
 	c0.145-0.31,0.121-0.672-0.062-0.96S30.364,0,30.023,0h-28c-0.342,0-0.66,0.174-0.844,0.463c-0.184,0.288-0.207,0.65-0.062,0.96
 	l1.579,3.384C2.068,5.02,1.561,5.463,1.265,6.056C0.967,6.653,0.918,7.331,1.129,7.963c0.34,1.023,1.294,1.711,2.372,1.711
 	c0.27,0,0.536-0.043,0.791-0.129l0.532-0.177l0.699,1.499c-1.237,0.476-1.896,1.852-1.473,3.122C4.392,15.013,5.345,15.7,6.423,15.7

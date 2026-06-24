@@ -114,11 +114,13 @@ function getBlackholeCells(board, r, c, GRID) {
  * @param {number} GRID
  * @returns {{r:number, c:number}[]}
  */
-function getChainCells(board, r, c, GRID) {
-  // 대상 타입 결정
-  let targetType = board[r][c];
+function getChainCells(board, r, c, GRID, targetType = -1) {
+  // 대상 타입 결정: 외부에서 유효한 타입(0~4)이 전달되면 그대로 사용
   if (targetType < 0 || targetType >= 10) {
-    // 특수 타일이면 보드에서 최빈 일반 타입을 선택
+    targetType = board[r][c];
+  }
+  if (targetType < 0 || targetType >= 10) {
+    // 여전히 특수타일이면 보드에서 최빈 일반 타입을 선택
     const freq = new Array(10).fill(0);
     for (let row = 0; row < GRID; row++)
       for (let col = 0; col < GRID; col++)
@@ -140,11 +142,11 @@ function getChainCells(board, r, c, GRID) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. getTimebombCells
+// 4. getTilebombCells
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 타임밤 타일 효과: 중심 기준 반경 3칸 원형 범위의 모든 셀 반환.
+ * 타일밤 타일 효과: 중심 기준 반경 2칸 원형 범위의 모든 셀 반환.
  * 중심(r,c) 포함.
  *
  * @param {number[][]} board
@@ -153,8 +155,8 @@ function getChainCells(board, r, c, GRID) {
  * @param {number} GRID
  * @returns {{r:number, c:number}[]}
  */
-function getTimebombCells(board, r, c, GRID) {
-  return _circleArea(r, c, 3, GRID);
+function getTilebombCells(board, r, c, GRID) {
+  return _circleArea(r, c, 2, GRID);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -173,8 +175,11 @@ function getTimebombCells(board, r, c, GRID) {
  * @param {number} GRID
  * @returns {{r:number, c:number}[]}
  */
-function getMagnetCells(board, r, c, GRID) {
-  let targetType = board[r][c];
+function getMagnetCells(board, r, c, GRID, targetType = -1) {
+  // 대상 타입 결정: 외부에서 유효한 타입(0~4)이 전달되면 그대로 사용
+  if (targetType < 0 || targetType >= 10) {
+    targetType = board[r][c];
+  }
   if (targetType < 0 || targetType >= 10) {
     const freq = new Array(10).fill(0);
     for (let row = 0; row < GRID; row++)

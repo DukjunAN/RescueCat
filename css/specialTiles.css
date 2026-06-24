@@ -10,7 +10,7 @@
    ──────────────────────────────────────────────────────────── */
 
 /* 특수 타일 공통: 이모지 크게 */
-.tile-drill, .tile-blackhole, .tile-chain, .tile-timebomb, .tile-magnet {
+.tile-drill, .tile-blackhole, .tile-chain, .tile-tilebomb, .tile-magnet {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,8 +33,7 @@
   border: 2px solid cyan;
 }
 
-.tile-timebomb {
-  position: relative;            /* ::after 의 absolute 기준점 */
+.tile-tilebomb {
   box-shadow: 0 0 12px 3px red;
   border: 2px solid red;
 }
@@ -44,43 +43,6 @@
   border: 2px solid lime;
 }
 
-
-/* ────────────────────────────────────────────────────────────
-   2. 타임밤 카운트다운 숫자 표시
-   ──────────────────────────────────────────────────────────── */
-
-.tile-timebomb::after {
-  content: attr(data-countdown);
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  font-size: 0.75em;
-  font-weight: bold;
-  color: white;
-  line-height: 1;
-  pointer-events: none;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
-}
-
-/* 카운트에 따른 글로우 강도 */
-.timebomb-3 {
-  box-shadow: 0 0 8px 2px red;
-}
-
-.timebomb-2 {
-  box-shadow: 0 0 14px 4px red;
-  animation: timebomb-pulse 0.8s infinite;
-}
-
-.timebomb-1 {
-  box-shadow: 0 0 20px 6px red;
-  animation: timebomb-pulse 0.3s infinite;
-}
-
-@keyframes timebomb-pulse {
-  0%,  100% { box-shadow: 0 0 20px 6px red; }
-  50%        { box-shadow: 0 0 6px 1px darkred; }
-}
 
 
 /* ────────────────────────────────────────────────────────────
@@ -123,8 +85,8 @@
   100%           { opacity: 0; }
 }
 
-/* ── 타임밤 (폭발 확장) ── */
-.timebomb-explode {
+/* ── 타일밤 (폭발 확장) ── */
+.tilebomb-explode {
   will-change: transform, opacity;
   animation: tb-explode 0.4s ease-out forwards;
 }
