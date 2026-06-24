@@ -569,6 +569,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   </div>
   <button class="title-btn" id="title-start-btn">🐾 게임 시작</button>
   <div class="title-best">최고 기록: <span id="title-best-score">-</span></div>
+  <div class="title-best" id="title-continue-row" style="display:none">📍 이어하기: <span id="title-continue-level">-</span>레벨부터</div>
 
   <div class="title-auth" id="title-auth">
     <button class="title-google-btn" id="title-login-btn">
@@ -1860,6 +1861,23 @@ function showTitleScreen() {
   AudioManager.playBGM('titleSong');
   document.getElementById('title-best-score').textContent = bestScore > 0 ? bestScore + '점' : '-';
   if (typeof getMyBestScore === 'function') getMyBestScore().then(s => { if (s > bestScore) { bestScore = s; document.getElementById('title-best-score').textContent = bestScore + '점'; } });
+  // 저장된 진행 레벨 표시
+  document.getElementById('title-continue-row').style.display = 'none';
+  if (typeof window.getCurrentUser === 'function') {
+    window.getCurrentUser().then(user => {
+      if (!user || typeof window.loadUserProgress !== 'function') return;
+      window.loadUserProgress(user.id).then(progress => {
+        const savedLevel = progress?.current_level ?? 1;
+        if (savedLevel > 1) {
+          document.getElementById('title-continue-level').textContent = savedLevel;
+          document.getElementById('title-continue-row').style.display = '';
+          document.getElementById('title-start-btn').textContent = `🐾 ${savedLevel}레벨 이어하기`;
+        } else {
+          document.getElementById('title-start-btn').textContent = '🐾 게임 시작';
+        }
+      });
+    });
+  }
 
   // 별 생성
   const starsEl = document.getElementById('title-stars');
@@ -1926,10 +1944,19 @@ document.getElementById('toggle-sound').addEventListener('change', e => {
   applySound(e.target.checked);
 });
 
-document.getElementById('title-start-btn').addEventListener('click', () => {
+document.getElementById('title-start-btn').addEventListener('click', async () => {
   document.getElementById('title-overlay').classList.add('hidden');
   AudioManager.stopBGM();
   level = 1;
+  try {
+    const user = typeof window.getCurrentUser === 'function' ? await window.getCurrentUser() : null;
+    if (user && typeof window.loadUserProgress === 'function') {
+      const progress = await window.loadUserProgress(user.id);
+      if (progress?.current_level > 1) level = progress.current_level;
+    }
+  } catch (e) {
+    console.error('[게임시작] 진행상황 로드 실패, 1레벨로 시작', e);
+  }
   init();
 });
 // document.getElementById('hint-btn').addEventListener('click', showHint);
