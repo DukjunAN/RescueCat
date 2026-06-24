@@ -1797,6 +1797,7 @@ const AudioManager = (() => {
     audio.volume  = s.volume ?? 1;
     audio.loop    = s.loop   ?? false;
     audio.preload = 'auto';
+    audio.disableRemotePlayback = true; // Android 알림바 미디어 세션 등록 방지
     _pool[s.id]   = audio;
     _origVol[s.id] = audio.volume;
   });
@@ -1850,10 +1851,14 @@ const AudioManager = (() => {
     isMuted() { return _muted; }
   };
 
-  // 모바일 홈 버튼·탭 전환 시 사운드 정지/복구
+  // 모바일 홈 버튼·탭 전환 시 사운드 정지/복구 + 미디어 세션 해제
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) api.pauseAll();
-    else api.resumeBGM();
+    if (document.hidden) {
+      api.pauseAll();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+    } else {
+      api.resumeBGM();
+    }
   });
 
   return api;
