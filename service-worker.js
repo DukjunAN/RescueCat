@@ -1,7 +1,7 @@
-const CACHE_NAME = 'rescuecat-cache-v4';
-const CACHE_FILES = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'rescuecat-assets-v1';
+
+// 이미지/아이콘만 사전 캐시 (코드 파일은 항상 네트워크에서 직접 로드)
+const PRECACHE_FILES = [
   '/manifest.json',
   '/assets/image/Cat_Sprite_Sheet.png',
   '/assets/image/icon-192.png',
@@ -11,19 +11,28 @@ const CACHE_FILES = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CACHE_FILES))
+      .then(cache => cache.addAll(PRECACHE_FILES))
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-    ))
+    caches.keys()
+      .then(keys => {
+        const oldKeys = keys.filter(k => k !== CACHE_NAME);
+        const isUpdate = oldKeys.length > 0;
+        return Promise.all(oldKeys.map(k => caches.delete(k))).then(() => isUpdate);
+      })
+      .then(isUpdate => self.clients.claim().then(() => isUpdate))
+      .then(isUpdate => {
+        if (!isUpdate) return;
+        // 업데이트 시 열려 있는 모든 탭에 새로고침 신호 전송
+        return self.clients.matchAll({ type: 'window' }).then(clients => {
+          clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' }));
+        });
+      })
   );
-  self.clients.claim();
 });
 
 const BYPASS_DOMAINS = [
@@ -35,35 +44,30 @@ const BYPASS_DOMAINS = [
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  if (BYPASS_DOMAINS.some(d => url.hostname.endsWith(d))) {
-    return;
-  }
+  // 외부 API: 서비스워커 개입 없음
+  if (BYPASS_DOMAINS.some(d => url.hostname.endsWith(d))) return;
 
-  // JS·CSS 파일은 항상 네트워크 우선 — 업데이트가 즉시 반영되도록
-  const isCode = /\.(js|css)(\?|$)/.test(url.pathname);
-  if (isCode) {
+  const path = url.pathname;
+
+  // HTML / JS / CSS → 항상 네트워크 우선, 캐시하지 않음
+  // 배포 후 다음 방문부터 즉시 최신 코드 적용 (수동 캐시 삭제 불필요)
+  if (/\.(html|js|css)(\?.*)?$/.test(path) || path === '/' || path.endsWith('/')) {
     event.respondWith(
-      fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(event.request))
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then(r => r || caches.match('/index.html'))
+      )
     );
     return;
   }
 
-  // 이미지·폰트 등 정적 파일은 캐시 우선
+  // 이미지 / 오디오 → 캐시 우선 (대용량, 변경 거의 없음)
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+        if (response && response.status === 200 && response.type === 'basic') {
+          caches.open(CACHE_NAME).then(c => c.put(event.request, response.clone()));
         }
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
         return response;
       });
     }).catch(() => caches.match('/index.html'))

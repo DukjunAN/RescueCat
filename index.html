@@ -24,6 +24,10 @@
   })();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js');
+    // 새 서비스워커 활성화 시 자동 새로고침 (유저 캐시 수동 삭제 불필요)
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'SW_UPDATED') window.location.reload();
+    });
   }
 </script>
 <script src="config/assets.js"></script>
