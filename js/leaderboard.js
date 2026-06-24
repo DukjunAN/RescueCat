@@ -40,6 +40,33 @@ window.getLeaderboard = async function () {
   return data ?? [];
 };
 
+// ── 디버그 로그 헬퍼 (index.html gameLog 연동) ──────────────────
+function _dbLog(msg) {
+  if (typeof gameLog === 'function') gameLog('DB', msg);
+  console.log('[DB]', msg);
+}
+
+// ── Supabase 연결 상태 확인 ────────────────────────────────────
+window.checkSupabaseConnection = async function () {
+  _dbLog('Supabase 연결 확인 중...');
+  try {
+    const { error } = await window.supabaseClient
+      .from('user_progress')
+      .select('count', { count: 'exact', head: true });
+    if (error) {
+      _dbLog(`❌ DB 연결 실패: ${error.message}`);
+      return false;
+    }
+    const q = _getQueue();
+    const pending = q.scores.length + (q.progress ? 1 : 0);
+    _dbLog(`✅ DB 연결 정상${pending > 0 ? ` | 미전송 대기 ${pending}건` : ''}`);
+    return true;
+  } catch (e) {
+    _dbLog(`❌ DB 연결 오류: ${e.message}`);
+    return false;
+  }
+};
+
 // ── 오프라인 큐 (로컬 캐시 → 나중에 Supabase 동기화) ─────────────
 
 const _QUEUE_KEY = 'rc_pending_saves';
@@ -55,18 +82,23 @@ function _setQueue(q) {
 // 큐에 쌓인 데이터를 Supabase로 전송
 window.flushPendingSaves = async function () {
   const user = window._cachedUser;
-  if (!user) return;
+  if (!user) { _dbLog('flushPendingSaves: 로그인 필요'); return; }
 
   const q = _getQueue();
-  if (!q.scores.length && !q.progress) return;
+  if (!q.scores.length && !q.progress) { _dbLog('flushPendingSaves: 전송할 데이터 없음'); return; }
 
-  console.log('[flushPendingSaves] 미전송 데이터 동기화 시작', q);
+  _dbLog(`동기화 시작 — 점수 ${q.scores.length}건, 진행상황 ${q.progress ? '1건' : '없음'}`);
 
   // level_scores 전송
   const failedScores = [];
   for (const item of q.scores) {
     const { error } = await window.supabaseClient.from('level_scores').insert(item);
-    if (error) { console.error('[flushPendingSaves] score 실패', error.message); failedScores.push(item); }
+    if (error) {
+      _dbLog(`❌ level_scores 전송 실패 lv${item.level_number}: ${error.message}`);
+      failedScores.push(item);
+    } else {
+      _dbLog(`✅ level_scores 전송 완료 lv${item.level_number}`);
+    }
   }
 
   // user_progress 전송
@@ -75,15 +107,23 @@ window.flushPendingSaves = async function () {
     const { error } = await window.supabaseClient
       .from('user_progress')
       .upsert(q.progress, { onConflict: 'user_id' });
-    if (error) { console.error('[flushPendingSaves] progress 실패', error.message); progressFailed = true; }
+    if (error) {
+      _dbLog(`❌ user_progress 전송 실패: ${error.message}`);
+      progressFailed = true;
+    } else {
+      _dbLog(`✅ user_progress 전송 완료 (최고 ${q.progress.max_cleared_level}레벨)`);
+    }
   }
 
   _setQueue({ scores: failedScores, progress: progressFailed ? q.progress : null });
-  if (!failedScores.length && !progressFailed) console.log('[flushPendingSaves] 동기화 완료');
+  if (!failedScores.length && !progressFailed) _dbLog('🎉 모든 데이터 동기화 완료');
 };
 
 // 네트워크 복구 시 자동 동기화
-window.addEventListener('online', () => window.flushPendingSaves());
+window.addEventListener('online', () => {
+  _dbLog('네트워크 복구 감지 → 동기화 시도');
+  window.flushPendingSaves();
+});
 
 // ── 로그인 기록 ────────────────────────────────────────────────
 

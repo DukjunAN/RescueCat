@@ -4,11 +4,18 @@
 // 로그인 유저 캐시 — 네트워크 없이 즉시 참조
 window._cachedUser = null;
 
-// 페이지 로드 시 로컬 세션에서 즉시 복원 + 접속 기록
+// 페이지 로드 시 로컬 세션에서 즉시 복원 + 미전송 데이터 동기화 시도
 window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
   window._cachedUser = session?.user ?? null;
-  if (session?.user && typeof window.recordLogin === 'function') {
-    window.recordLogin(session.user);
+  if (session?.user) {
+    if (typeof window.recordLogin      === 'function') window.recordLogin(session.user);
+    // 로컬에 쌓인 미전송 데이터를 페이지 로드 시 즉시 동기화 + 연결 상태 확인
+    setTimeout(async () => {
+      if (typeof window.checkSupabaseConnection === 'function') {
+        const ok = await window.checkSupabaseConnection();
+        if (ok && typeof window.flushPendingSaves === 'function') window.flushPendingSaves();
+      }
+    }, 2000); // leaderboard.js 로드 완료 대기 후 실행
   }
 });
 
