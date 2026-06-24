@@ -85,6 +85,46 @@ window.flushPendingSaves = async function () {
 // 네트워크 복구 시 자동 동기화
 window.addEventListener('online', () => window.flushPendingSaves());
 
+// ── 로그인 기록 ────────────────────────────────────────────────
+
+function _detectDevice() {
+  const ua = navigator.userAgent;
+  if (/Android/.test(ua)) return 'Android';
+  if (/iPhone|iPad/.test(ua)) return 'iOS';
+  return 'PC';
+}
+
+window.recordLogin = async function (user) {
+  if (!user) return;
+
+  // 1시간 내 중복 기록 방지 (페이지 새로고침마다 쌓이는 것 방지)
+  const LAST_KEY = 'rc_last_login_recorded';
+  const lastTs = parseInt(localStorage.getItem(LAST_KEY) || '0', 10);
+  if (Date.now() - lastTs < 60 * 60 * 1000) return;
+
+  const payload = {
+    user_id:      user.id,
+    display_name: user.user_metadata?.full_name ?? user.email ?? null,
+    avatar_url:   user.user_metadata?.avatar_url ?? null,
+    device:       _detectDevice()
+  };
+
+  try {
+    const { error } = await window.supabaseClient
+      .from('login_history')
+      .insert(payload);
+
+    if (!error) {
+      localStorage.setItem(LAST_KEY, Date.now().toString());
+      console.log('[recordLogin] 접속 기록 완료', payload.device);
+    } else {
+      console.error('[recordLogin]', error.message);
+    }
+  } catch (e) {
+    console.error('[recordLogin] 네트워크 오류', e.message);
+  }
+};
+
 // ── user_progress 테이블 연동 ──────────────────────────────────
 
 window.saveUserProgress = async function (userId, data) {
