@@ -8,6 +8,20 @@
 <meta name="theme-color" content="#c678f0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <script>
+  (function() {
+    var ua = navigator.userAgent;
+    if (!/KAKAOTALK/.test(ua)) return;
+    if (/Android/.test(ua)) {
+      location.href = 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end';
+    } else if (/iPhone|iPad/.test(ua)) {
+      document.addEventListener('DOMContentLoaded', function() {
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff6b6b;color:#fff;padding:14px 12px;text-align:center;z-index:99999;font-size:14px;font-family:sans-serif;line-height:1.4;';
+        banner.innerHTML = '구글 로그인을 사용하려면<br>우측 하단 <b>···</b> → <b>Safari로 열기</b>를 눌러주세요';
+        document.body.prepend(banner);
+      });
+    }
+  })();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js');
   }
@@ -1661,6 +1675,26 @@ function endGame(won, reason) {
 
   if (won) {
     if (typeof saveScore === 'function') saveScore(score);
+    // 유저 진행상황 & 레벨 점수 저장
+    (async () => {
+      try {
+        const user = typeof window.getCurrentUser === 'function' ? await window.getCurrentUser() : null;
+        if (user) {
+          const prev = typeof window.loadUserProgress === 'function' ? await window.loadUserProgress(user.id) : null;
+          const maxCleared = Math.max(level, prev?.max_cleared_level ?? 0);
+          const totalScore = (prev?.total_score ?? 0) + score;
+          if (typeof window.saveLevelScore    === 'function') await window.saveLevelScore(user.id, level, score);
+          if (typeof window.saveUserProgress  === 'function') await window.saveUserProgress(user.id, {
+            max_cleared_level: maxCleared,
+            current_level:     level + 1,
+            total_score:       totalScore
+          });
+          gameLog('LEVEL', `진행상황 저장 완료 | maxCleared=${maxCleared} totalScore=${totalScore}`);
+        }
+      } catch (e) {
+        console.error('[endGame] 진행상황 저장 실패', e);
+      }
+    })();
     AudioManager.play('escapeSound');
     setCatState('celebrate');
     const catC = document.getElementById('cat-canvas');
