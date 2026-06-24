@@ -48,21 +48,21 @@ function _dbLog(msg) {
 
 // ── Supabase 연결 상태 확인 ────────────────────────────────────
 window.checkSupabaseConnection = async function () {
-  _dbLog('Supabase 연결 확인 중...');
+  _dbLog('[DB] 연결 확인중...');
   try {
     const { error } = await window.supabaseClient
       .from('user_progress')
       .select('count', { count: 'exact', head: true });
     if (error) {
-      _dbLog(`❌ DB 연결 실패: ${error.message}`);
+      _dbLog(`[DB FAIL] ${error.code} ${error.message}`);
       return false;
     }
     const q = _getQueue();
     const pending = q.scores.length + (q.progress ? 1 : 0);
-    _dbLog(`✅ DB 연결 정상${pending > 0 ? ` | 미전송 대기 ${pending}건` : ''}`);
+    _dbLog(`[DB OK] 연결정상 | 대기${pending}건`);
     return true;
   } catch (e) {
-    _dbLog(`❌ DB 연결 오류: ${e.message}`);
+    _dbLog(`[DB ERR] ${e.message}`);
     return false;
   }
 };
@@ -141,7 +141,7 @@ window.recordLogin = async function (user) {
   const lastTs = parseInt(localStorage.getItem(LAST_KEY) || '0', 10);
   const elapsed = Date.now() - lastTs;
   if (elapsed < 60 * 60 * 1000) {
-    _dbLog(`⏭ 접속기록 생략 (${Math.round(elapsed/60000)}분 전 기록됨, 1시간 내 중복 방지)`);
+    _dbLog(`[LOGIN SKIP] ${Math.round(elapsed/60000)}분전 기록됨`);
     return;
   }
 
@@ -152,7 +152,7 @@ window.recordLogin = async function (user) {
     device:       _detectDevice()
   };
 
-  _dbLog(`📋 접속기록 저장 시도 | ${payload.display_name} | ${payload.device}`);
+  _dbLog(`[LOGIN] 기록시도 ${payload.device}`);
 
   try {
     const { error } = await window.supabaseClient
@@ -161,12 +161,12 @@ window.recordLogin = async function (user) {
 
     if (!error) {
       localStorage.setItem(LAST_KEY, Date.now().toString());
-      _dbLog(`✅ 접속기록 완료 | ${payload.device}`);
+      _dbLog(`[LOGIN OK] ${payload.device}`);
     } else {
-      _dbLog(`❌ 접속기록 실패: ${error.message}`);
+      _dbLog(`[LOGIN FAIL] ${error.code} ${error.message}`);
     }
   } catch (e) {
-    _dbLog(`❌ 접속기록 네트워크 오류: ${e.message}`);
+    _dbLog(`[LOGIN ERR] ${e.message}`);
   }
 };
 
