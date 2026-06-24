@@ -1676,24 +1676,24 @@ function endGame(won, reason) {
 
   if (won) {
     if (typeof saveScore === 'function') saveScore(score);
-    // 유저 진행상황 & 레벨 점수 저장
+    // 유저 진행상황 & 레벨 점수 저장 (캐시된 유저 사용 — 네트워크 요청 없음)
     (async () => {
       try {
-        const user = typeof window.getCurrentUser === 'function' ? await window.getCurrentUser() : null;
-        if (user) {
-          const prev = typeof window.loadUserProgress === 'function' ? await window.loadUserProgress(user.id) : null;
-          const maxCleared = Math.max(level, prev?.max_cleared_level ?? 0);
-          const totalScore = (prev?.total_score ?? 0) + score;
-          if (typeof window.saveLevelScore    === 'function') await window.saveLevelScore(user.id, level, score);
-          if (typeof window.saveUserProgress  === 'function') await window.saveUserProgress(user.id, {
-            max_cleared_level: maxCleared,
-            current_level:     level + 1,
-            total_score:       totalScore
-          });
-          gameLog('LEVEL', `진행상황 저장 완료 | maxCleared=${maxCleared} totalScore=${totalScore}`);
-        }
+        const user = window._cachedUser ?? null;
+        if (!user) { gameLog('LEVEL', '진행상황 저장 건너뜀 (비로그인)'); return; }
+        const prev = typeof window.loadUserProgress === 'function' ? await window.loadUserProgress(user.id) : null;
+        const maxCleared = Math.max(level, prev?.max_cleared_level ?? 0);
+        const totalScore = (prev?.total_score ?? 0) + score;
+        if (typeof window.saveLevelScore   === 'function') await window.saveLevelScore(user.id, level, score);
+        if (typeof window.saveUserProgress === 'function') await window.saveUserProgress(user.id, {
+          max_cleared_level: maxCleared,
+          current_level:     level + 1,
+          total_score:       totalScore
+        });
+        gameLog('LEVEL', `진행상황 저장 완료 | user=${user.email} maxCleared=${maxCleared} totalScore=${totalScore}`);
       } catch (e) {
         console.error('[endGame] 진행상황 저장 실패', e);
+        gameLog('LEVEL', `진행상황 저장 실패: ${e.message}`);
       }
     })();
     AudioManager.play('escapeSound');
