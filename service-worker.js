@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rescuecat-cache-v2';
+const CACHE_NAME = 'rescuecat-cache-v3';
 const CACHE_FILES = [
   '/',
   '/index.html',
