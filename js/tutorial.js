@@ -263,6 +263,34 @@ class TutorialManager {
       this._highlightCells(cells);
       const mid = cells[Math.floor(cells.length / 2)];
       this._setFingerAt(mid.r, mid.c, 'horizontal');
+
+    } else if (tileType === ST.TILEBOMB) {
+      this._setCaption(
+        '💥',
+        '타일밤 만들기',
+        '블랙홀 🌀 과 드릴 ⚙️ 을 서로 스왑하면 강력한 타일밤이 생겨요!',
+        '',
+        '특수타일끼리 조합하면 더 강한 타일이 탄생해요'
+      );
+      this._highlightCells(cells);
+      if (cells.length >= 2) {
+        const isRow = cells[0].r === cells[1].r;
+        this._setFingerAt(cells[0].r, cells[0].c, isRow ? 'horizontal' : 'vertical');
+      }
+
+    } else if (tileType === ST.MAGNET) {
+      this._setCaption(
+        '🧲',
+        '자석 만들기',
+        '체인 ⚡ 과 블랙홀 🌀, 또는 체인 ⚡ 과 드릴 ⚙️ 을 스왑하면 자석이 생겨요!',
+        '',
+        '특수타일끼리 조합하면 더 강한 타일이 탄생해요'
+      );
+      this._highlightCells(cells);
+      if (cells.length >= 2) {
+        const isRow = cells[0].r === cells[1].r;
+        this._setFingerAt(cells[0].r, cells[0].c, isRow ? 'horizontal' : 'vertical');
+      }
     }
   }
 
@@ -325,6 +353,28 @@ class TutorialManager {
         '체인을 스왑하면 상대 타일과 같은 동물을 최대 8마리 연쇄 제거!',
         '',
         '번개선이 연결되는 걸 확인해보세요 ⚡'
+      );
+      this._highlightCells(this.allowedCells);
+      this._setFingerAt(r, c, 'horizontal');
+
+    } else if (tileType === ST.TILEBOMB) {
+      this._setCaption(
+        '💥',
+        '타일밤 발동!',
+        '스왑하는 순간 즉시 폭발! 주변을 넓게 제거해요',
+        '.🟥🟥🟥.\n🟥🟥🟥🟥🟥\n🟥🟥💥🟥🟥\n🟥🟥🟥🟥🟥\n.🟥🟥🟥.',
+        '최대 13칸 동시 제거!'
+      );
+      this._highlightCells(this.allowedCells);
+      this._setFingerAt(r, c, 'horizontal');
+
+    } else if (tileType === ST.MAGNET) {
+      this._setCaption(
+        '🧲',
+        '자석 발동!',
+        '스왑한 상대 타일과 같은 동물을 보드 전체에서 모두 제거해요!',
+        '',
+        '개수 제한 없음! 같은 동물 전부 사라짐 🧲'
       );
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, 'horizontal');
