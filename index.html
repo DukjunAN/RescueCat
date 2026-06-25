@@ -329,6 +329,7 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
   background:linear-gradient(160deg,#1a0a2e,#2d1b4e);
   border:1px solid #4a2d7a;border-radius:20px;
   padding:28px 32px;min-width:300px;
+  max-height:90vh;overflow-y:auto;
   box-shadow:0 0 40px rgba(198,120,240,.25);}
 .settings-title{
   text-align:center;font-size:1.2rem;font-weight:900;
@@ -357,6 +358,14 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
 .toggle-wrap input:checked + .toggle-slider::before{transform:translateX(22px);}
 .toggle-wrap input:disabled + .toggle-slider{opacity:.35;cursor:not-allowed;}
 /* 닫기 버튼 */
+.settings-action-btn{
+  background:#3d2060;color:#c8a0e0;
+  border:1px solid #4a2d7a;border-radius:8px;
+  padding:5px 14px;font-size:.85rem;font-weight:700;
+  cursor:pointer;font-family:'Nunito',sans-serif;
+  transition:background .15s,color .15s;}
+.settings-action-btn:hover{background:#5a3090;color:#fff;}
+.settings-action-btn.done{background:#2d6a2d;color:#a0e0a0;border-color:#3a8a3a;}
 .settings-close-btn{
   display:block;width:100%;margin-top:20px;
   background:linear-gradient(135deg,#c678f0,#8e44ad);
@@ -651,6 +660,12 @@ svg.timer-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
         <input type="checkbox" id="toggle-lang" disabled>
         <span class="toggle-slider"></span>
       </label>
+    </div>
+
+    <div class="settings-row">
+      <span class="settings-icon">📖</span>
+      <span class="settings-label">튜토리얼 초기화</span>
+      <button class="settings-action-btn" id="reset-tutorial-btn">초기화</button>
     </div>
 
     <button class="settings-close-btn" id="settings-close-btn">확인</button>
@@ -1462,11 +1477,11 @@ async function trySwap(r1, c1, r2, c2) {
       if (comboResult !== null) {
         const [hr, hc, lr, lc] = _rank(valA) >= _rank(valB) ? [r1,c1,r2,c2] : [r2,c2,r1,c1];
         board[hr][hc] = comboResult;
-        // === TUTORIAL HOOK 1-B: 조합 생성 경로 ===
+        /* === TUTORIAL HOOK 1-B (비활성화) ===
         if (window.tutorialManager && !window.tutorialManager.isActive) {
           window.tutorialManager.checkAndShow(comboResult, [{ r: hr, c: hc }]);
         }
-        // === END TUTORIAL HOOK 1-B ===
+        === END TUTORIAL HOOK 1-B === */
         board[lr][lc] = -1;
         renderBoard();
         const comboEl = getTile(hr, hc);
@@ -1542,11 +1557,11 @@ async function trySwap(r1, c1, r2, c2) {
 
     await delay(350);
     await processMatches(fx);
-    // === TUTORIAL HOOK 2-B: 특수타일 발동 경로 ===
+    /* === TUTORIAL HOOK 2-B (비활성화) ===
     if (window.tutorialManager && window.tutorialManager.isActive) {
       window.tutorialManager.onSwapComplete(r1, c1, r2, c2);
     }
-    // === END TUTORIAL HOOK 2-B ===
+    === END TUTORIAL HOOK 2-B === */
     return;              // 일반 매치 탐색 생략
   }
   // ── 기존 findMatches() 로직 ──
@@ -1556,11 +1571,11 @@ async function trySwap(r1, c1, r2, c2) {
     const pivot = m[Math.floor(m.length / 2)];
     gameLog('SPECIAL', `✨ 특수타일 생성: ${_SN[specialType]||specialType} at (${pivot.r},${pivot.c}) (${m.length+1}매치)`);
     board[pivot.r][pivot.c] = specialType;
-    // === TUTORIAL HOOK: 특수타일 생성 ===
+    /* === TUTORIAL HOOK: 특수타일 생성 (비활성화) ===
     if (window.tutorialManager && !window.tutorialManager.isActive) {
       window.tutorialManager.checkAndShow(specialType, m);
     }
-    // === END TUTORIAL HOOK ===
+    === END TUTORIAL HOOK === */
     const pivotEl = getTile(pivot.r, pivot.c);
     if (pivotEl) {
       pivotEl.classList.add(getSpecialTileClass(specialType), 'special-spawn');
@@ -1578,11 +1593,11 @@ async function trySwap(r1, c1, r2, c2) {
   }
   if (m.length > 0) { await processMatches(m); }
   else { gameLog('SWAP', `매치없음 → 취소`); swap(r1, c1, r2, c2); gameLog('ANIM', `animating=false`); animating = false; scheduleHint(); }
-  // === TUTORIAL HOOK: 스왑 완료 ===
+  /* === TUTORIAL HOOK: 스왑 완료 (비활성화) ===
   if (window.tutorialManager && window.tutorialManager.isActive) {
     window.tutorialManager.onSwapComplete(r1, c1, r2, c2);
   }
-  // === END TUTORIAL HOOK ===
+  === END TUTORIAL HOOK === */
 }
 function swap(r1, c1, r2, c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; renderBoard(); }
 function findMatches() {
@@ -2051,6 +2066,14 @@ document.getElementById('settings-overlay').addEventListener('click', e => {
 document.getElementById('toggle-sound').addEventListener('change', e => {
   applySound(e.target.checked);
 });
+document.getElementById('reset-tutorial-btn').addEventListener('click', () => {
+  localStorage.removeItem('rescuecat_tutorial_shown');
+  if (window.tutorialManager) window.tutorialManager.shownTutorials.clear();
+  const btn = document.getElementById('reset-tutorial-btn');
+  btn.textContent = '완료 ✓';
+  btn.classList.add('done');
+  setTimeout(() => { btn.textContent = '초기화'; btn.classList.remove('done'); }, 2000);
+});
 
 document.getElementById('title-start-btn').addEventListener('click', async () => {
   document.getElementById('title-overlay').classList.add('hidden');
@@ -2189,7 +2212,7 @@ window.addEventListener('load', function () {
   <script src="js/supabase-client.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/leaderboard.js"></script>
-  <script src="js/tutorial.js"></script>
+  <!-- <script src="js/tutorial.js"></script> -->
   <script>
     // 버전 정보 디버그 로그 + UI에 표시
     (function() {

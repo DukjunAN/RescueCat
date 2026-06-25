@@ -8,7 +8,7 @@ window.SOUNDS_CONFIG = {
   sounds: [
     {
       id: 'titleSong',
-      file: '845899__cat-fox_alex__cat-hero-save-the-world-83bpm-cmaj(TitileSong).flac',
+      file: 'BGM/845899__cat-fox_alex__cat-hero-save-the-world-83bpm-cmaj(TitileSong).flac',
       volume: 0.5,
       loop: true,
       trigger: 'bgm',
@@ -53,6 +53,46 @@ window.SOUNDS_CONFIG = {
       loop: false,
       trigger: 'levelClear',
       description: '레벨 클리어 — 고양이 탈출 사운드'
+    },
+    {
+      id: 'sfxDrill',
+      file: 'floraphonic-fireball-whoosh-5-179129(Drill)_pixabay.mp3',
+      volume: 0.7,
+      loop: false,
+      trigger: 'special',
+      description: '드릴 발동 효과음'
+    },
+    {
+      id: 'sfxBlackhole',
+      file: 'dragon-studio-whoosh-cinematic-376875(blackhole)_pixabay.mp3',
+      volume: 0.7,
+      loop: false,
+      trigger: 'special',
+      description: '블랙홀 발동 효과음'
+    },
+    {
+      id: 'sfxChain',
+      file: 'freesound_community-bug-zapper-47300(chain)_pixabay.mp3',
+      volume: 0.7,
+      loop: false,
+      trigger: 'special',
+      description: '체인 발동 효과음'
+    },
+    {
+      id: 'sfxBomb',
+      file: 'freesound_community-explosion-91872(bomb)_pixabay.mp3',
+      volume: 0.8,
+      loop: false,
+      trigger: 'special',
+      description: '타일밤 폭발 효과음'
+    },
+    {
+      id: 'sfxMagnet',
+      file: 'data_pion-sfx22-dimensionalbreak1-338374(magnet.1sec)_pixabay.mp3',
+      volume: 0.7,
+      loop: false,
+      trigger: 'special',
+      description: '자석 발동 효과음 (앞 1초만 재생)'
     }
   ]
 };

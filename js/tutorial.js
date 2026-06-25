@@ -1,44 +1,27 @@
 /**
  * js/tutorial.js
  * 특수타일 인터랙티브 튜토리얼 시스템
- *
- * 의존: index.html 전역 변수
- *   - window.animating   (let, script-scope global — window 프로퍼티가 아닐 수 있음)
- *   - window.timerInterval (동일)
- *   - window.tick        (function 선언 → window.tick 가능)
- *   - window.SPECIAL_TYPES (js/specialTiles.js)
- *   - window.GRID        (index.html 전역)
- *   - window.getDrillDirection (js/specialTiles.js)
- *
- * index.html / specialTiles.js 수정 없음 — 파일 추가만.
  */
 
 class TutorialManager {
   constructor() {
-    this.shownTutorials = new Set(
+    this.shownTutorials   = new Set(
       JSON.parse(localStorage.getItem('rescuecat_tutorial_shown') || '[]')
     );
-    this.isActive        = false;
-    this.currentTileType = null;
-    this.phase           = null;   // 'create' | 'activate'
-    this.allowedCells    = [];     // [{r, c}]
-    this._timerBackup    = null;
+    this.isActive         = false;
+    this.currentTileType  = null;
+    this.phase            = null;
+    this.allowedCells     = [];
+    this._timerBackup     = null;
     this._buildOverlay();
   }
 
-  // ─────────────────────────────────────────────────
-  // 오버레이 HTML + CSS 생성
-  // ─────────────────────────────────────────────────
   _buildOverlay() {
-    // CSS
     const style = document.createElement('style');
     style.textContent = `
+/* 퍼즐 그리드 딤 오버레이 — 스팟라이트만 포함, 자막 없음 */
 #tut-overlay {
   position: fixed; inset: 0; z-index: 9000;
-}
-#tut-backdrop {
-  position: absolute; inset: 0;
-  background: rgba(0,0,0,0.82);
   pointer-events: none;
 }
 #tut-spotlight {
@@ -56,7 +39,7 @@ class TutorialManager {
   position: absolute;
   font-size: 32px;
   pointer-events: none;
-  z-index: 9200;
+  z-index: 9001;
 }
 @keyframes tut-drag-h {
   0%,100% { transform: translate(0,0);   opacity: 1; }
@@ -66,34 +49,36 @@ class TutorialManager {
   0%,100% { transform: translate(0,0);   opacity: 1; }
   50%      { transform: translate(0,56px); opacity: 0.7; }
 }
+
+/* 자막 — chase-scene 위에 fixed로 띄움 */
 #tut-caption {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: white; border-radius: 20px 20px 0 0;
-  padding: 20px 24px; text-align: center;
-  z-index: 9300;
-  animation: tut-slide 0.35s ease-out;
+  position: fixed; left: 0; right: 0;
+  background: rgba(10,3,22,0.95);
+  display: none;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 10px 20px;
+  z-index: 9500;
+  border-radius: 12px;
+  animation: tut-fade 0.25s ease-out;
 }
-@keyframes tut-slide {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-#tut-icon  { font-size: 40px; margin-bottom: 6px; }
-#tut-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
-#tut-desc  { font-size: 15px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+@keyframes tut-fade { from { opacity: 0; } to { opacity: 1; } }
+#tut-icon  { font-size: 26px; margin-bottom: 3px; }
+#tut-title { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 3px; }
+#tut-desc  { font-size: 11px; color: #c8a0e0; margin-bottom: 3px; line-height: 1.4; }
 #tut-range {
-  font-family: monospace; font-size: 18px;
-  letter-spacing: 4px; margin: 8px 0;
-  color: #e44; white-space: pre;
+  font-family: monospace; font-size: 12px;
+  letter-spacing: 3px; margin: 3px 0;
+  color: #f88; white-space: pre;
 }
-#tut-hint  { font-size: 13px; color: #888; margin-bottom: 12px; }
+#tut-hint  { font-size: 10px; color: #8b6aaa; margin-bottom: 6px; }
 #tut-skip  {
-  padding: 8px 28px;
-  background: #eee; border: none;
-  border-radius: 20px; font-size: 14px; cursor: pointer;
+  padding: 4px 18px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  color: #c8a0e0; border-radius: 20px; font-size: 11px; cursor: pointer;
 }
+
 .tut-active-tile {
-  position: relative !important;
-  z-index: 9100 !important;
   filter: brightness(1.4) drop-shadow(0 0 8px gold) !important;
   transform: scale(1.1) !important;
   pointer-events: auto !important;
@@ -106,33 +91,34 @@ class TutorialManager {
 `;
     document.head.appendChild(style);
 
-    // HTML
+    // 오버레이 (스팟라이트 + 손가락만, 자막 없음)
     const overlay = document.createElement('div');
     overlay.id = 'tut-overlay';
     overlay.style.display = 'none';
     overlay.innerHTML = `
-      <div id="tut-backdrop"></div>
       <div id="tut-spotlight"></div>
       <div id="tut-finger">👆</div>
-      <div id="tut-caption">
-        <div id="tut-icon"></div>
-        <div id="tut-title"></div>
-        <div id="tut-desc"></div>
-        <div id="tut-range"></div>
-        <div id="tut-hint"></div>
-        <button id="tut-skip">건너뛰기</button>
-      </div>
     `;
     document.body.appendChild(overlay);
+
+    // 자막 (body에 fixed — chase-scene 위치에 동적 배치)
+    const caption = document.createElement('div');
+    caption.id = 'tut-caption';
+    caption.innerHTML = `
+      <div id="tut-icon"></div>
+      <div id="tut-title"></div>
+      <div id="tut-desc"></div>
+      <div id="tut-range"></div>
+      <div id="tut-hint"></div>
+      <button id="tut-skip">건너뛰기</button>
+    `;
+    document.body.appendChild(caption);
 
     document.getElementById('tut-skip').addEventListener('click', () => this._endTutorial());
   }
 
-  // ─────────────────────────────────────────────────
-  // 게임 일시정지 / 재개
-  // ─────────────────────────────────────────────────
   _pauseGame() {
-    window.animating = true;
+    // animating은 건드리지 않음 — true로 하면 touch/pointer 이벤트가 모두 차단됨
     if (window.timerInterval) {
       clearInterval(window.timerInterval);
       this._timerBackup = window.timerInterval;
@@ -140,14 +126,19 @@ class TutorialManager {
   }
 
   _resumeGame() {
-    window.animating = false;
-    // tick: index.html 1179행 function 선언 → window.tick 접근 가능
     window.timerInterval = setInterval(window.tick, 1000);
   }
 
-  // ─────────────────────────────────────────────────
-  // 셀 하이라이트
-  // ─────────────────────────────────────────────────
+  // chase-scene 위치에 자막 배치
+  _positionCaption() {
+    const chase = document.getElementById('chase-scene');
+    const cap   = document.getElementById('tut-caption');
+    if (!chase || !cap) return;
+    const rect = chase.getBoundingClientRect();
+    cap.style.top    = rect.top + 'px';
+    cap.style.height = rect.height + 'px';
+  }
+
   _highlightCells(cells) {
     document.querySelectorAll('.tile').forEach(el => {
       el.classList.remove('tut-active-tile');
@@ -184,9 +175,6 @@ class TutorialManager {
     });
   }
 
-  // ─────────────────────────────────────────────────
-  // 자막 / 손가락 설정
-  // ─────────────────────────────────────────────────
   _setCaption(icon, title, desc, range, hint) {
     document.getElementById('tut-icon').textContent  = icon  ?? '';
     document.getElementById('tut-title').textContent = title ?? '';
@@ -207,201 +195,124 @@ class TutorialManager {
       : 'tut-drag-v 1.2s ease-in-out infinite';
   }
 
-  // ─────────────────────────────────────────────────
-  // 외부 진입점
-  // ─────────────────────────────────────────────────
   checkAndShow(tileType, matchedCells) {
     if (this.shownTutorials.has(tileType)) return;
     this._pauseGame();
     this.isActive        = true;
     this.currentTileType = tileType;
+    this._positionCaption();
     document.getElementById('tut-overlay').style.display = '';
+    document.getElementById('tut-caption').style.display = 'flex';
     this.showPhase1(tileType, matchedCells);
   }
 
-  // ─────────────────────────────────────────────────
-  // Phase 1 — 특수타일 생성 유도
-  // ─────────────────────────────────────────────────
   showPhase1(tileType, cells) {
     this.phase        = 'create';
     this.allowedCells = cells;
-    const ST = window.SPECIAL_TYPES;
+    const ST = SPECIAL_TYPES;
 
     if (tileType === ST.DRILL) {
-      const isRow = cells.every(cell => cell.r === cells[0].r);
-      this._setCaption(
-        '⚙️',
-        '드릴 타일 만들기',
-        '같은 동물 4마리를 가로 또는 세로 한 줄로 맞춰보세요!',
-        '',
-        '👆 드래그해서 4개를 한 줄로 완성하면 드릴이 생겨요'
-      );
-      this._highlightCells(cells);
-      const mid = cells[Math.floor(cells.length / 2)];
-      this._setFingerAt(mid.r, mid.c, isRow ? 'horizontal' : 'vertical');
-
+      this._setCaption('⚙️', '드릴 타일 생성!',
+        '같은 동물 4마리를 한 줄로 맞추면 드릴이 생겨요', '',
+        '방금 이 패턴으로 드릴이 만들어졌어요');
     } else if (tileType === ST.BLACKHOLE) {
-      this._setCaption(
-        '🌀',
-        '블랙홀 만들기',
-        '같은 동물 6마리 이상, 또는 5마리를 십자(+) 모양으로 맞춰보세요!',
-        '',
-        '가장 강력한 기본 특수타일이에요'
-      );
-      this._highlightCells(cells);
-      const mid = cells[Math.floor(cells.length / 2)];
-      this._setFingerAt(mid.r, mid.c, 'horizontal');
-
+      this._setCaption('🌀', '블랙홀 생성!',
+        '5마리 십자(+) 또는 6마리 이상 매치하면 블랙홀이 생겨요', '',
+        '가장 강력한 기본 특수타일이에요');
     } else if (tileType === ST.CHAIN) {
-      this._setCaption(
-        '⚡',
-        '체인 만들기',
-        '같은 동물 5마리를 일렬로 맞춰보세요!',
-        '',
-        '번개처럼 연쇄 공격하는 타일이에요'
-      );
-      this._highlightCells(cells);
-      const mid = cells[Math.floor(cells.length / 2)];
-      this._setFingerAt(mid.r, mid.c, 'horizontal');
-
+      this._setCaption('⚡', '체인 생성!',
+        '같은 동물 5마리를 일렬로 맞추면 체인이 생겨요', '',
+        '번개처럼 연쇄 공격하는 타일이에요');
     } else if (tileType === ST.TILEBOMB) {
-      this._setCaption(
-        '💥',
-        '타일밤 만들기',
-        '블랙홀 🌀 과 드릴 ⚙️ 을 서로 스왑하면 강력한 타일밤이 생겨요!',
-        '',
-        '특수타일끼리 조합하면 더 강한 타일이 탄생해요'
-      );
-      this._highlightCells(cells);
-      if (cells.length >= 2) {
-        const isRow = cells[0].r === cells[1].r;
-        this._setFingerAt(cells[0].r, cells[0].c, isRow ? 'horizontal' : 'vertical');
-      }
-
+      this._setCaption('💥', '타일밤 생성!',
+        '블랙홀 🌀 + 드릴 ⚙️ 을 스왑하면 타일밤이 생겨요', '',
+        '특수타일끼리 조합하면 더 강한 타일이 탄생해요');
     } else if (tileType === ST.MAGNET) {
-      this._setCaption(
-        '🧲',
-        '자석 만들기',
-        '체인 ⚡ 과 블랙홀 🌀, 또는 체인 ⚡ 과 드릴 ⚙️ 을 스왑하면 자석이 생겨요!',
-        '',
-        '특수타일끼리 조합하면 더 강한 타일이 탄생해요'
-      );
-      this._highlightCells(cells);
-      if (cells.length >= 2) {
-        const isRow = cells[0].r === cells[1].r;
-        this._setFingerAt(cells[0].r, cells[0].c, isRow ? 'horizontal' : 'vertical');
-      }
+      this._setCaption('🧲', '자석 생성!',
+        '체인 ⚡ + 블랙홀 🌀 또는 체인 ⚡ + 드릴 ⚙️ 스왑으로 생성', '',
+        '특수타일끼리 조합하면 더 강한 타일이 탄생해요');
+    } else {
+      return;
     }
+
+    // 방금 생성된 특수타일 하이라이트
+    const tileCell = this._findSpecialTileOnBoard(tileType);
+    if (tileCell) this._highlightCells([tileCell]);
   }
 
-  // ─────────────────────────────────────────────────
-  // Phase 2 — 발동 방법 안내
-  // ─────────────────────────────────────────────────
   showPhase2(tileType, tileCell) {
     this.phase = 'activate';
-    const ST   = window.SPECIAL_TYPES;
-    const GRID = window.GRID || 8;
+    const ST   = SPECIAL_TYPES;
+    const gridSize = typeof GRID !== 'undefined' ? GRID : 8;
     const { r, c } = tileCell;
 
-    // 방향에 맞는 인접 스왑 가능 셀 결정
     let swapNeighbor = null;
     if (tileType === ST.DRILL) {
-      const dir = (typeof getDrillDirection === 'function')
-        ? getDrillDirection(r, c)
-        : 'row';
+      const dir = (typeof getDrillDirection === 'function') ? getDrillDirection(r, c) : 'row';
       if (dir === 'row') {
-        swapNeighbor = (c + 1 < GRID) ? { r, c: c + 1 } : { r, c: c - 1 };
+        swapNeighbor = (c + 1 < gridSize) ? { r, c: c + 1 } : { r, c: c - 1 };
       } else {
-        swapNeighbor = (r + 1 < GRID) ? { r: r + 1, c } : { r: r - 1, c };
+        swapNeighbor = (r + 1 < gridSize) ? { r: r + 1, c } : { r: r - 1, c };
       }
     } else {
-      swapNeighbor = (c + 1 < GRID) ? { r, c: c + 1 } : { r, c: c - 1 };
+      swapNeighbor = (c + 1 < gridSize) ? { r, c: c + 1 } : { r, c: c - 1 };
     }
-
     this.allowedCells = swapNeighbor ? [tileCell, swapNeighbor] : [tileCell];
 
     if (tileType === ST.DRILL) {
-      const dir     = (typeof getDrillDirection === 'function')
-        ? getDrillDirection(r, c)
-        : 'row';
+      const dir     = (typeof getDrillDirection === 'function') ? getDrillDirection(r, c) : 'row';
       const dirIcon = dir === 'row' ? '⚙️➡' : '⚙️⬇';
-      this._setCaption(
-        dirIcon,
-        '드릴 발동!',
-        '드릴을 생성된 방향으로 스왑하면 줄 전체가 날아가요!',
-        '',
-        '⚠️ 가로 드릴은 가로로만, 세로 드릴은 세로로만 스왑 가능해요'
-      );
+      this._setCaption(dirIcon, '드릴 발동!',
+        '드릴을 생성된 방향으로 스왑하면 줄 전체가 날아가요!', '',
+        '⚠️ 가로 드릴은 가로로만, 세로 드릴은 세로로만 스왑 가능해요');
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, dir === 'row' ? 'horizontal' : 'vertical');
 
     } else if (tileType === ST.BLACKHOLE) {
-      this._setCaption(
-        '🌀',
-        '블랙홀 발동!',
+      this._setCaption('🌀', '블랙홀 발동!',
         '블랙홀을 어떤 방향으로든 스왑하면 주변을 빨아들여요!',
-        '.🌀.\n🌀💥🌀\n.🌀.',
-        '상하좌우 1칸씩, 총 5칸 제거'
-      );
+        '.🌀.\n🌀💥🌀\n.🌀.', '상하좌우 1칸씩, 총 5칸 제거');
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, 'horizontal');
 
     } else if (tileType === ST.CHAIN) {
-      this._setCaption(
-        '⚡',
-        '체인 발동!',
-        '체인을 스왑하면 상대 타일과 같은 동물을 최대 8마리 연쇄 제거!',
-        '',
-        '번개선이 연결되는 걸 확인해보세요 ⚡'
-      );
+      this._setCaption('⚡', '체인 발동!',
+        '체인을 스왑하면 상대 타일과 같은 동물을 최대 8마리 연쇄 제거!', '',
+        '번개선이 연결되는 걸 확인해보세요 ⚡');
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, 'horizontal');
 
     } else if (tileType === ST.TILEBOMB) {
-      this._setCaption(
-        '💥',
-        '타일밤 발동!',
+      this._setCaption('💥', '타일밤 발동!',
         '스왑하는 순간 즉시 폭발! 주변을 넓게 제거해요',
         '.🟥🟥🟥.\n🟥🟥🟥🟥🟥\n🟥🟥💥🟥🟥\n🟥🟥🟥🟥🟥\n.🟥🟥🟥.',
-        '최대 13칸 동시 제거!'
-      );
+        '최대 13칸 동시 제거!');
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, 'horizontal');
 
     } else if (tileType === ST.MAGNET) {
-      this._setCaption(
-        '🧲',
-        '자석 발동!',
-        '스왑한 상대 타일과 같은 동물을 보드 전체에서 모두 제거해요!',
-        '',
-        '개수 제한 없음! 같은 동물 전부 사라짐 🧲'
-      );
+      this._setCaption('🧲', '자석 발동!',
+        '스왑한 상대 타일과 같은 동물을 보드 전체에서 모두 제거해요!', '',
+        '개수 제한 없음! 같은 동물 전부 사라짐 🧲');
       this._highlightCells(this.allowedCells);
       this._setFingerAt(r, c, 'horizontal');
     }
   }
 
-  // ─────────────────────────────────────────────────
-  // 스왑 완료 콜백 (index.html의 trySwap 완료 후 호출 예정)
-  // ─────────────────────────────────────────────────
   onSwapComplete(r1, c1, r2, c2) {
     if (!this.isActive) return;
 
     if (this.phase === 'create') {
-      // create phase: allowedCells 체크 생략
-      // 스왑한 셀이 매치셀 밖일 수 있으므로 체크하지 않고 바로 보드 스캔
       setTimeout(() => {
         const tileCell = this._findSpecialTileOnBoard(this.currentTileType);
         if (tileCell) {
           this.showPhase2(this.currentTileType, tileCell);
         } else {
-          // 특수타일이 이미 발동됐거나 위치 불명 → 튜토리얼 종료
           this._endTutorial();
         }
       }, 500);
 
     } else if (this.phase === 'activate') {
-      // activate phase: 허용된 셀로의 스왑인지 확인
       const swappedCells = [{ r: r1, c: c1 }, { r: r2, c: c2 }];
       const isAllowed = swappedCells.every(pos =>
         this.allowedCells.some(a => a.r === pos.r && a.c === pos.c)
@@ -411,7 +322,7 @@ class TutorialManager {
       this._clearHighlight();
       document.getElementById('tut-finger').style.animation = 'none';
 
-      const ST = window.SPECIAL_TYPES;
+      const ST = SPECIAL_TYPES;
       const msgs = {
         [ST.DRILL]:     ['⚙️', '줄 전체가 날아갔어요!'],
         [ST.BLACKHOLE]: ['🌀', '주변 5칸이 빨려들어갔어요!'],
@@ -421,23 +332,18 @@ class TutorialManager {
       };
       const [icon, desc] = msgs[this.currentTileType] || ['🎉', '특수타일 발동 완료!'];
 
-      // 효과 애니메이션 완료 대기 후 확인 버튼 표시
       setTimeout(() => {
         this._setCaption(icon, '완료!', desc, '', '');
         const okBtn = document.createElement('button');
         okBtn.textContent = '확인!';
-        okBtn.style.cssText = 'margin-top:12px;padding:10px 32px;background:#4CAF50;color:white;border:none;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;';
+        okBtn.style.cssText = 'margin-top:10px;padding:8px 28px;background:#4CAF50;color:white;border:none;border-radius:24px;font-size:14px;font-weight:bold;cursor:pointer;';
         okBtn.onclick = () => this._endTutorial();
         document.getElementById('tut-caption').appendChild(okBtn);
       }, 1500);
     }
   }
 
-  // ─────────────────────────────────────────────────
-  // 보드에서 특수타일 위치 탐색
-  // ─────────────────────────────────────────────────
   _findSpecialTileOnBoard(tileType) {
-    // board는 index.html에서 let으로 선언된 전역 변수 — window.board 접근 불가, 직접 참조
     if (typeof board === 'undefined' || !board) return null;
     for (let r = 0; r < board.length; r++) {
       for (let c = 0; c < board[r].length; c++) {
@@ -447,20 +353,14 @@ class TutorialManager {
     return null;
   }
 
-  // ─────────────────────────────────────────────────
-  // 튜토리얼 종료
-  // ─────────────────────────────────────────────────
   _endTutorial() {
     this.shownTutorials.add(this.currentTileType);
-    localStorage.setItem(
-      'rescuecat_tutorial_shown',
-      JSON.stringify([...this.shownTutorials])
-    );
+    localStorage.setItem('rescuecat_tutorial_shown', JSON.stringify([...this.shownTutorials]));
     document.querySelectorAll('#tut-caption button:not(#tut-skip)').forEach(b => b.remove());
     document.getElementById('tut-overlay').style.display = 'none';
+    document.getElementById('tut-caption').style.display = 'none';
     this._clearHighlight();
     this._resumeGame();
-
     this.isActive        = false;
     this.phase           = null;
     this.currentTileType = null;
