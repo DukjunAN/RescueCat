@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>캐릭터 크기 보정</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a0a2e;
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 1.3rem; margin-bottom: 6px; color: #c678f0; }
+  .desc { font-size: 0.85rem; color: #aaa; margin-bottom: 20px; line-height: 1.6; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: #2d1b4e;
+    border-radius: 12px;
+    padding: 12px 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .tiles-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .tile-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+  .tile-label { font-size: 0.6rem; color: #888; }
+
+  .tile-large {
+    width: 80px; height: 80px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #ff6b6b, #c0392b);
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 2px solid #666;
+  }
+  .tile-game {
+    width: 52px; height: 52px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #ff6b6b, #c0392b);
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 2px solid #666;
+  }
+
+  .name {
+    font-size: 0.72rem;
+    color: #ccc;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  /* ── scale 조절 ── */
+  .row-label { font-size: 0.65rem; color: #888; width: 100%; text-align: left; padding-left: 2px; }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    border: none;
+    background: #c678f0;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .btn:hover { background: #a050d0; }
+
+  .scale-val {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #f5c842;
+    min-width: 38px;
+    text-align: center;
+  }
+
+  /* ── minLevel 조절 ── */
+  .level-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn-lv {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    border: none;
+    background: #3a7bd5;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .btn-lv:hover { background: #2a5bb0; }
+  .level-val {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #5ddbff;
+    min-width: 44px;
+    text-align: center;
+  }
+  .level-val.restricted { color: #f5c842; }
+
+  /* ── 하단 코드 출력 ── */
+  .copy-section {
+    background: #2d1b4e;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .copy-section h2 { font-size: 1rem; margin-bottom: 6px; color: #c678f0; }
+  .copy-section p { font-size: 0.8rem; color: #aaa; margin-bottom: 10px; }
+
+  textarea {
+    width: 100%;
+    height: 360px;
+    background: #111;
+    color: #7ec8a0;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    resize: vertical;
+  }
+  .copy-btn {
+    margin-top: 10px;
+    padding: 8px 20px;
+    background: #c678f0;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+  }
+  .copy-btn:hover { background: #a050d0; }
+  .copied { background: #27ae60 !important; }
+</style>
+</head>
+<body>
+
+<h1>캐릭터 크기 & 등장 레벨 보정 도구</h1>
+<p class="desc">
+  <strong>크기(scale)</strong>: ＋/－ 로 조절. 왼쪽 80px = 크게 보기, 오른쪽 52px = 실제 게임 크기.<br>
+  <strong>최소 레벨</strong>: ▲/▼ 로 조절. 해당 레벨 이상에서만 이 캐릭터가 등장합니다.<br>
+  다 조정했으면 <strong>코드 복사</strong> → <code>config/assets.js</code>의 list 부분을 통째로 교체하세요.
+</p>
+
+<div class="grid" id="grid"></div>
+
+<div class="copy-section">
+  <h2>config/assets.js 에 붙여넣을 코드</h2>
+  <p>아래 내용을 복사해서 assets.js의 <code>list: [ ... ]</code> 부분을 통째로 교체하세요.</p>
+  <textarea id="output" readonly></textarea>
+  <button class="copy-btn" id="copyBtn" onclick="copyCode()">코드 복사</button>
+</div>
+
+<script src="config/assets.js"></script>
+<script>
+  const ac    = window.ASSETS_CONFIG || {};
+  const list  = (ac.models || {}).list || [];
+  const base  = (ac.previews || {}).basePath || 'animals/';
+  const ext   = (ac.previews || {}).ext || '.png';
+
+  const SCALE_STEP = 0.05;
+  const LEVEL_STEP = 5;
+
+  const scales    = list.map(a => typeof a === 'object' ? (a.scale    ?? 1.0) : 1.0);
+  const minLevels = list.map(a => typeof a === 'object' ? (a.minLevel ?? 1)   : 1);
+  const names     = list.map(a => typeof a === 'object' ? a.name : a);
+
+  const grid = document.getElementById('grid');
+
+  names.forEach((name, i) => {
+    const imgUrl = `${base}${name}${ext}`;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    // ── 두 타일 나란히 ──
+    const tilesRow = document.createElement('div');
+    tilesRow.className = 'tiles-row';
+
+    const mkTileWrap = (cls) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tile-wrap';
+      const tile = document.createElement('div');
+      tile.className = cls;
+      tile.style.backgroundImage = `url("${imgUrl}")`;
+      tile.style.backgroundSize  = `${scales[i] * 100}%`;
+      const lbl = document.createElement('div');
+      lbl.className = 'tile-label';
+      lbl.textContent = cls === 'tile-large' ? '크게 보기' : '실제 크기';
+      wrap.append(tile, lbl);
+      return { wrap, tile };
+    };
+
+    const { wrap: wL, tile: tileLarge } = mkTileWrap('tile-large');
+    const { wrap: wG, tile: tileGame  } = mkTileWrap('tile-game');
+    tilesRow.append(wL, wG);
+
+    // ── 이름 ──
+    const label = document.createElement('div');
+    label.className = 'name';
+    label.textContent = name.replace('animal-', '');
+
+    // ── scale 조절 ──
+    const scaleLabel = document.createElement('div');
+    scaleLabel.className = 'row-label';
+    scaleLabel.textContent = '크기(scale)';
+
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+
+    const sMinus = document.createElement('button');
+    sMinus.className = 'btn'; sMinus.textContent = '－';
+
+    const scaleVal = document.createElement('div');
+    scaleVal.className = 'scale-val';
+    scaleVal.textContent = scales[i].toFixed(2);
+
+    const sPlus = document.createElement('button');
+    sPlus.className = 'btn'; sPlus.textContent = '＋';
+
+    sMinus.onclick = () => {
+      scales[i] = Math.max(0.1, parseFloat((scales[i] - SCALE_STEP).toFixed(2)));
+      applyScale(i, tileLarge, tileGame, scaleVal);
+    };
+    sPlus.onclick = () => {
+      scales[i] = Math.min(3.0, parseFloat((scales[i] + SCALE_STEP).toFixed(2)));
+      applyScale(i, tileLarge, tileGame, scaleVal);
+    };
+    controls.append(sMinus, scaleVal, sPlus);
+
+    // ── minLevel 조절 ──
+    const levelLabel = document.createElement('div');
+    levelLabel.className = 'row-label';
+    levelLabel.textContent = '최소 레벨';
+
+    const levelControls = document.createElement('div');
+    levelControls.className = 'level-controls';
+
+    const lMinus = document.createElement('button');
+    lMinus.className = 'btn-lv'; lMinus.textContent = '▼';
+
+    const levelVal = document.createElement('div');
+    levelVal.className = 'level-val' + (minLevels[i] > 1 ? ' restricted' : '');
+    levelVal.textContent = `Lv.${minLevels[i]}`;
+
+    const lPlus = document.createElement('button');
+    lPlus.className = 'btn-lv'; lPlus.textContent = '▲';
+
+    lMinus.onclick = () => {
+      minLevels[i] = Math.max(1, minLevels[i] - LEVEL_STEP);
+      updateLevel(i, levelVal);
+    };
+    lPlus.onclick = () => {
+      minLevels[i] = Math.min(100, minLevels[i] + LEVEL_STEP);
+      updateLevel(i, levelVal);
+    };
+    levelControls.append(lMinus, levelVal, lPlus);
+
+    card.append(tilesRow, label, scaleLabel, controls, levelLabel, levelControls);
+    grid.appendChild(card);
+  });
+
+  function applyScale(i, tileLarge, tileGame, valEl) {
+    const pct = `${scales[i] * 100}%`;
+    tileLarge.style.backgroundSize = pct;
+    tileGame.style.backgroundSize  = pct;
+    valEl.textContent = scales[i].toFixed(2);
+    renderOutput();
+  }
+
+  function updateLevel(i, valEl) {
+    valEl.textContent = `Lv.${minLevels[i]}`;
+    valEl.className = 'level-val' + (minLevels[i] > 1 ? ' restricted' : '');
+    renderOutput();
+  }
+
+  function renderOutput() {
+    const lines = names.map((name, i) => {
+      const namePad  = ' '.repeat(Math.max(0, 21 - name.length));
+      const lvlStr   = String(minLevels[i]).padStart(2, ' ');
+      return `      { name: '${name}',${namePad}scale: ${scales[i].toFixed(2)}, minLevel: ${lvlStr} }`;
+    });
+    document.getElementById('output').value =
+      '    list: [\n' + lines.join(',\n') + '\n    ],';
+  }
+
+  function copyCode() {
+    const ta = document.getElementById('output');
+    ta.select();
+    navigator.clipboard.writeText(ta.value).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '복사됨 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '코드 복사';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  renderOutput();
+</script>
+</body>
+</html>

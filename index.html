@@ -1071,16 +1071,27 @@ let board = [];
 // ── Animal tile system ──
 // 에셋 경로는 config/assets.js 에서 관리
 const _ac = window.ASSETS_CONFIG || {};
-const ANIMAL_LIST    = (_ac.models    || {}).list     || [];
+const _animalRaw        = (_ac.models    || {}).list     || [];
+const ANIMAL_LIST       = _animalRaw.map(a => typeof a === 'object' ? a.name          : a);
+const ANIMAL_SCALES     = _animalRaw.map(a => typeof a === 'object' ? (a.scale    ?? 1.0) : 1.0);
+const ANIMAL_MIN_LEVELS = _animalRaw.map(a => typeof a === 'object' ? (a.minLevel ?? 1)   : 1);
 const PREVIEW_BASE   = (_ac.previews  || {}).basePath || 'animals/';
 const PREVIEW_EXT    = (_ac.previews  || {}).ext      || '.png';
 
-// 100레벨 × 5종류 결정론적 배치 (시드 기반)
+// 100레벨 × 5종류 결정론적 배치 (시드 기반, minLevel 필터 적용)
 const LEVEL_CONFIGS = (() => {
   let s = 98765;
   const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
-  return Array.from({ length: MAX_LEVEL }, () => {
-    const pool = [...Array(ANIMAL_LIST.length).keys()];
+  return Array.from({ length: MAX_LEVEL }, (_, lvlIdx) => {
+    const lvl = lvlIdx + 1;
+    const pool = ANIMAL_LIST
+      .map((_, i) => i)
+      .filter(i => (ANIMAL_MIN_LEVELS[i] ?? 1) <= lvl);
+    // 최소 5마리 보장: 부족하면 minLevel 초과 캐릭터도 추가
+    if (pool.length < 5) {
+      const extra = ANIMAL_LIST.map((_, i) => i).filter(i => !pool.includes(i));
+      pool.push(...extra.slice(0, 5 - pool.length));
+    }
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -1090,6 +1101,7 @@ const LEVEL_CONFIGS = (() => {
 })();
 
 let currentLevelAnimals = ['', '', '', '', ''];
+let currentLevelScales  = [1.0, 1.0, 1.0, 1.0, 1.0];
 
 function waitForThree() { return Promise.resolve(); }
 
@@ -1097,6 +1109,7 @@ async function loadLevelAnimals() {
   const config = LEVEL_CONFIGS[(level - 1) % MAX_LEVEL];
   document.getElementById('load-text').textContent = `레벨 ${level} — 동물 친구들 등장!`;
   currentLevelAnimals = config.map(idx => `${PREVIEW_BASE}${ANIMAL_LIST[idx]}${PREVIEW_EXT}`);
+  currentLevelScales  = config.map(idx => ANIMAL_SCALES[idx] ?? 1.0);
   for (let i = 0; i < 5; i++) {
     const slot = document.getElementById(`ls${i}`);
     slot.innerHTML = '';
@@ -1141,9 +1154,10 @@ function setTileVisual(el, type) {
   }
   el.className = 'tile ' + (TYPE_CLS[type] ?? '');
   el.textContent = '';
-  el.style.backgroundSize = '';
-  el.style.backgroundPosition = '';
-  el.style.backgroundRepeat = '';
+  const scale = currentLevelScales[type] ?? 1.0;
+  el.style.backgroundSize = `${scale * 100}%`;
+  el.style.backgroundPosition = 'center';
+  el.style.backgroundRepeat = 'no-repeat';
   const img = currentLevelAnimals[type];
   el.style.backgroundImage = img ? `url("${img}")` : '';
 }
@@ -1449,6 +1463,30 @@ function onTileClick(r, c) {
 function clearSelection() { if (selected) { gameLog('SELECT', `클리어 (${selected.r},${selected.c})`); getTile(selected.r, selected.c)?.classList.remove('selected'); selected = null; } }
 function adj(r1, c1, r2, c2) { return (Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2); }
 
+// 매치 배열을 받아 특수타일 생성 조건이면 보드에 배치하고 pivot을 배열에서 제거.
+// 특수타일을 생성했으면 true 반환.
+function applySpecialTile(matches) {
+  const specialType = getSpecialTileType(matches);
+  if (specialType === null || matches.length === 0) return false;
+  const pivot = matches[Math.floor(matches.length / 2)];
+  gameLog('SPECIAL', `✨ 특수타일 생성: type=${specialType} at (${pivot.r},${pivot.c}) (${matches.length+1}매치)`);
+  board[pivot.r][pivot.c] = specialType;
+  const pivotEl = getTile(pivot.r, pivot.c);
+  if (pivotEl) {
+    pivotEl.classList.add(getSpecialTileClass(specialType), 'special-spawn');
+    setTimeout(() => pivotEl.classList.remove('special-spawn'), 350);
+    if (specialType === SPECIAL_TYPES.DRILL) {
+      const isRow = matches.every(cell => cell.r === matches[0].r);
+      const drillDir = isRow ? 'row' : 'col';
+      setDrillDirection(pivot.r, pivot.c, drillDir);
+      setTileVisual(pivotEl, specialType);
+      gameLog('SPECIAL', `드릴 방향=${isRow?'행(row)':'열(col)'}`);
+    }
+  }
+  matches.splice(matches.findIndex(cell => cell.r === pivot.r && cell.c === pivot.c), 1);
+  return true;
+}
+
 async function trySwap(r1, c1, r2, c2) {
   clearAutoHint();
   const _SN = {10:'드릴',11:'블랙홀',12:'체인',13:'타일밤',14:'자석'};
@@ -1566,31 +1604,7 @@ async function trySwap(r1, c1, r2, c2) {
   }
   // ── 기존 findMatches() 로직 ──
   const m = findMatches();
-  const specialType = getSpecialTileType(m);
-  if (specialType !== null && m.length > 0) {
-    const pivot = m[Math.floor(m.length / 2)];
-    gameLog('SPECIAL', `✨ 특수타일 생성: ${_SN[specialType]||specialType} at (${pivot.r},${pivot.c}) (${m.length+1}매치)`);
-    board[pivot.r][pivot.c] = specialType;
-    /* === TUTORIAL HOOK: 특수타일 생성 (비활성화) ===
-    if (window.tutorialManager && !window.tutorialManager.isActive) {
-      window.tutorialManager.checkAndShow(specialType, m);
-    }
-    === END TUTORIAL HOOK === */
-    const pivotEl = getTile(pivot.r, pivot.c);
-    if (pivotEl) {
-      pivotEl.classList.add(getSpecialTileClass(specialType), 'special-spawn');
-      setTimeout(() => pivotEl.classList.remove('special-spawn'), 350);
-      if (specialType === SPECIAL_TYPES.DRILL) {
-        const isRow = m.every(cell => cell.r === m[0].r);
-        const drillDir = isRow ? 'row' : 'col';
-        setDrillDirection(pivot.r, pivot.c, drillDir);
-        setTileVisual(pivotEl, specialType);
-        gameLog('SPECIAL', `드릴 방향=${isRow?'행(row)':'열(col)'}`);
-      }
-
-    }
-    m.splice(m.findIndex(cell => cell.r === pivot.r && cell.c === pivot.c), 1);
-  }
+  applySpecialTile(m);
   if (m.length > 0) { await processMatches(m); }
   else { gameLog('SWAP', `매치없음 → 취소`); swap(r1, c1, r2, c2); gameLog('ANIM', `animating=false`); animating = false; scheduleHint(); }
   /* === TUTORIAL HOOK: 스왑 완료 (비활성화) ===
@@ -1694,7 +1708,12 @@ async function processMatches(matches, isChain = false) {
   await dropAndFill();
   await delay(100);
   const chain = findMatches();
-  if (chain.length > 0) { gameLog('CHAIN', `연쇄! ${chain.length}개 추가`); await delay(80); await processMatches(chain, true); }
+  if (chain.length > 0) {
+    gameLog('CHAIN', `연쇄! ${chain.length}개 추가`);
+    applySpecialTile(chain);
+    await delay(80);
+    await processMatches(chain, true);
+  }
   else {
       document.getElementById('score-value').textContent = score;
       gameLog('ANIM', `animating=false | 턴완료 score=${score}`);

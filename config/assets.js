@@ -6,13 +6,33 @@ window.ASSETS_CONFIG = {
 
   models: {
     basePath: 'assets/models/',
+    // scale: PNG 표시 크기 비율 (1.0 = 100%). 캐릭터별로 개별 조정 가능.
+    // minLevel: 이 레벨 이상에서만 등장. 비슷하게 생긴 캐릭터는 고레벨로 분리.
     list: [
-      'animal-beaver', 'animal-bee',       'animal-bunny',  'animal-cat',
-      'animal-caterpillar', 'animal-chick', 'animal-cow',    'animal-crab',
-      'animal-deer',   'animal-dog',       'animal-elephant','animal-fish',
-      'animal-fox',    'animal-giraffe',   'animal-hog',     'animal-koala',
-      'animal-lion',   'animal-monkey',    'animal-panda',   'animal-parrot',
-      'animal-penguin','animal-pig',       'animal-polar',   'animal-tiger'
+      { name: 'animal-beaver',     scale: 1.10, minLevel: 51 },
+      { name: 'animal-bee',        scale: 1.35, minLevel:  1 },
+      { name: 'animal-bunny',      scale: 1.40, minLevel: 31 },
+      { name: 'animal-cat',        scale: 1.20, minLevel:  1 },
+      { name: 'animal-caterpillar',scale: 1.35, minLevel:  1 },
+      { name: 'animal-chick',      scale: 1.70, minLevel: 36 },
+      { name: 'animal-cow',        scale: 1.40, minLevel:  1 },
+      { name: 'animal-crab',       scale: 1.80, minLevel: 46 },
+      { name: 'animal-deer',       scale: 1.40, minLevel: 31 },
+      { name: 'animal-dog',        scale: 1.30, minLevel: 56 },
+      { name: 'animal-elephant',   scale: 1.60, minLevel:  1 },
+      { name: 'animal-fish',       scale: 1.50, minLevel:  1 },
+      { name: 'animal-fox',        scale: 1.25, minLevel: 61 },
+      { name: 'animal-giraffe',    scale: 1.35, minLevel:  1 },
+      { name: 'animal-hog',        scale: 1.25, minLevel:  1 },
+      { name: 'animal-koala',      scale: 1.70, minLevel: 41 },
+      { name: 'animal-lion',       scale: 1.25, minLevel:  1 },
+      { name: 'animal-monkey',     scale: 1.50, minLevel:  1 },
+      { name: 'animal-panda',      scale: 1.15, minLevel:  1 },
+      { name: 'animal-parrot',     scale: 1.60, minLevel: 41 },
+      { name: 'animal-penguin',    scale: 1.80, minLevel:  1 },
+      { name: 'animal-pig',        scale: 1.20, minLevel:  1 },
+      { name: 'animal-polar',      scale: 1.15, minLevel: 31 },
+      { name: 'animal-tiger',      scale: 1.20, minLevel:  1 }
     ],
     ext: '.glb'
   },
