@@ -72,7 +72,7 @@ let totalMatchesForLevel = 10;
 
 function waitForThree() { return Promise.resolve(); }
 
-const _GAME_BGMS = ['gameBgm1', 'gameBgm2', 'gameBgm3', 'gameBgm4', 'gameBgm5'];
+const _GAME_BGMS = ['gameBgm3', 'gameBgm4', 'gameBgm5'];
 function playRandomGameBGM() {
   const id = _GAME_BGMS[Math.floor(Math.random() * _GAME_BGMS.length)];
   AudioManager.playBGM(id);

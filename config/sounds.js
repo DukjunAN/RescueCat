@@ -95,16 +95,6 @@ window.SOUNDS_CONFIG = {
       description: '자석 발동 효과음 (앞 1초만 재생)'
     },
     {
-      id: 'gameBgm1',
-      file: 'BGM/Cat Song 1.0.wav',
-      volume: 0.3, loop: true, trigger: 'bgm', description: '게임 BGM 1'
-    },
-    {
-      id: 'gameBgm2',
-      file: 'BGM/Cat Song 1.2.wav',
-      volume: 0.3, loop: true, trigger: 'bgm', description: '게임 BGM 2'
-    },
-    {
       id: 'gameBgm3',
       file: 'BGM/puzzle-1-a(GameSong)_OpenGameArt.mp3',
       volume: 0.3, loop: true, trigger: 'bgm', description: '게임 BGM 3'
