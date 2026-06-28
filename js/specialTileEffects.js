@@ -59,7 +59,7 @@ function _randomPick(arr, n) {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * 드릴 타일 효과: 생성 방향(행 또는 열) 전체를 제거 대상으로 반환.
+ * 회전톱 타일 효과: 스왑 방향(행 또는 열) 전체를 제거 대상으로 반환.
  *
  * @param {number[][]} board
  * @param {number} r
@@ -93,7 +93,14 @@ function getDrillCells(board, r, c, GRID, direction) {
  * @returns {{r:number, c:number}[]}
  */
 function getBlackholeCells(board, r, c, GRID) {
-  return _circleArea(r, c, 2, GRID);
+  // 중심 + 상하좌우 1칸 = 최대 5칸 (십자형, 대각선 제외)
+  const cells = [{ r, c }];
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc;
+    if (_inBounds(nr, nc, GRID)) cells.push({ r: nr, c: nc });
+  }
+  return cells;
 }
 
 // ─────────────────────────────────────────────────────────────

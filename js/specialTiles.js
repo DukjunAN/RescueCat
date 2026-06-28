@@ -13,7 +13,7 @@
 // 1. SPECIAL_TYPES  (board 값으로 사용할 정수)
 // ─────────────────────────────────────────────────────────────
 const SPECIAL_TYPES = Object.freeze({
-  DRILL:     10,   // 4개 일렬     → 행·열 전체 관통 제거
+  DRILL:     10,   // 4개 일렬     → 스왑 방향 한 줄 제거 (회전톱)
   BLACKHOLE: 11,   // 6개+ or 십자 → 반경 흡입 폭발
   CHAIN:     12,   // 5개 일렬     → 같은 색 전체 연쇄 제거
   TILEBOMB:  13,   // 특수+특수 조합 → 즉시 폭발
@@ -141,27 +141,3 @@ function getSpecialTileType(matchedCells) {
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// 6. drillDirections  (드릴 방향 관리)
-// ─────────────────────────────────────────────────────────────
-const drillDirections = {};
-
-function setDrillDirection(r, c, dir) {
-  drillDirections[`${r},${c}`] = dir;
-}
-
-function getDrillDirection(r, c) {
-  return drillDirections[`${r},${c}`] || 'row';
-}
-
-function moveDrillDirection(fromR, fromC, toR, toC) {
-  const key = `${fromR},${fromC}`;
-  if (drillDirections[key] !== undefined) {
-    drillDirections[`${toR},${toC}`] = drillDirections[key];
-    delete drillDirections[key];
-  }
-}
-
-function clearDrillDirection(r, c) {
-  delete drillDirections[`${r},${c}`];
-}

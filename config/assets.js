@@ -38,7 +38,7 @@ window.ASSETS_CONFIG = {
   },
 
   previews: {
-    basePath: 'animals/',
+    basePath: 'assets/image/animals/',
     ext: '.png'
   },
 

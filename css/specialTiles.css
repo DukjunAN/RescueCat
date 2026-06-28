@@ -50,7 +50,7 @@
    (JS: classList.add → transitionend/animationend 후 classList.remove)
    ──────────────────────────────────────────────────────────── */
 
-/* ── 드릴 (행·열 sweep) ── */
+/* ── 회전톱 (행·열 sweep) ── */
 .drill-firing {
   will-change: transform, opacity;
   animation: drill-sweep 0.25s ease-in forwards;

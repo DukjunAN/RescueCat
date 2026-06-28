@@ -109,7 +109,7 @@
 <h1>🔬 특수 타일 효과 테스트</h1>
 
 <div class="btn-row">
-  <button id="btn-drill">⚙️ 드릴 발동</button>
+  <button id="btn-drill">⚙️ 회전톱 발동</button>
   <button id="btn-blackhole">🌀 블랙홀 발동</button>
   <button id="btn-chain">⚡ 체인 발동</button>
   <button id="btn-tilebomb">💥 타일밤 발동</button>
@@ -221,7 +221,7 @@ function addLog(msg) {
 // ──────────────────────────────────────────────────────
 document.getElementById('btn-drill').addEventListener('click', () => {
   const cells = getDrillCells(board, 3, 3, GRID, 'row');
-  highlightCells(cells, 'drill-firing', '드릴');
+  highlightCells(cells, 'drill-firing', '회전톱');
 });
 
 document.getElementById('btn-blackhole').addEventListener('click', () => {

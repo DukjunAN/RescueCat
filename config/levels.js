@@ -4,7 +4,7 @@
  * timePerLevel: 레벨당 추가 시간(초)
  */
 window.LEVEL_CONFIG = {
-  maxLevel: 100,
+  maxLevel: 200,
   animalSeed: 98765,
 
   defaults: {
@@ -15,7 +15,8 @@ window.LEVEL_CONFIG = {
   },
 
   tiers: [
-    { from: 1,  to: 30,  grid: 8,  timePerLevel: 5 },
-    { from: 31, to: 100, grid: 10, timePerLevel: 3 }
+    { from: 1,   to: 30,  grid: 8,  timePerLevel: 5 },
+    { from: 31,  to: 100, grid: 10, timePerLevel: 3 },
+    { from: 101, to: 200, grid: 10, timePerLevel: 2 }
   ]
 };
